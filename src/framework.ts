@@ -26,6 +26,7 @@ import { ResolveKey, Tiny } from '@denwa/tiny';
 import viewResultHandler from './handlers/view';
 import redirectResultHandler from './handlers/redirect';
 
+export const TinyKey = 'tiny';
 export const ContextKey = 'context';
 export const ControllerConfigKey = 'controllerConfig';
 export const ControllerKey = 'controller';
@@ -361,8 +362,15 @@ export function setData(request: Request, key: string, value: any): void {
 	data.set(key, value);
 }
 
-export function setContext(tiny: Tiny): RequestHandler {
+export function setContext(tiny?: Tiny): RequestHandler {
 	return function(request: Request, response: Response, next: NextFunction) {
+		if(!tiny) {
+			tiny = request.app.get(TinyKey);
+			if(!tiny) {
+				throw new Error(`unable to get key=${tiny} from request.app.get()`);
+			}
+		}
+
 		const context: Context = new ContextImpl(request, response, next, tiny);
 		setData(request, ContextKey, context);
 		
