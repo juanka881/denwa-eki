@@ -455,11 +455,11 @@ export function getModelStringFieldSchema(field: ModelFieldMetadata): yup.String
 	}
 
 	if(field.min) {
-		schema = schema.min(field.min);
+		schema = schema.min(field.min as number);
 	}
 
 	if(field.max) {
-		schema = schema.max(field.max);
+		schema = schema.max(field.max as number);
 	}
 
 	if(field.trim) {
@@ -467,7 +467,7 @@ export function getModelStringFieldSchema(field: ModelFieldMetadata): yup.String
 	}
 
 	if(field.enum) {
-		schema = schema.oneOf(field.enum);
+		schema = schema.oneOf(field.enum as string[]);
 	}
 
 	if(field.pattern) {
@@ -495,12 +495,16 @@ export function getModelNumberFieldSchema(field: ModelFieldMetadata): yup.Number
 		schema = schema.notRequired();
 	}
 
+	if(field.enum) {
+		schema = schema.oneOf(field.enum as number[]);
+	}
+
 	if(field.min) {
-		schema = schema.min(field.min);
+		schema = schema.min(field.min as number);
 	}
 
 	if(field.max) {
-		schema = schema.max(field.max);
+		schema = schema.max(field.max as number);
 	}
 
 	if(field.lessThan) {
@@ -563,6 +567,14 @@ export function getModelDateFieldSchema(field: ModelFieldMetadata): yup.DateSche
 	}
 	else {
 		schema = schema.notRequired();
+	}
+
+	if(field.min) {
+		schema = schema.min(field.min as Date);
+	}
+
+	if(field.max) {
+		schema = schema.max(field.max as Date);
 	}
 
 	return schema;
@@ -654,7 +666,11 @@ export function getModelFieldSchema(field: ModelFieldMetadata): yup.BaseSchema {
 	if(!type) {
 		if(field.format || field.pattern) {
 			type = 'string';
-		}		
+		}
+
+		if(field.enum && typeof field.enum[0] === 'string') {
+			type = 'string';
+		}
 	}
 
 	switch(type) {

@@ -86,13 +86,13 @@ export interface ModelFieldMetadata {
 	type?: 'string' | 'number' | 'bool' | 'date' | ClassType<any>;
 	array?: 'string' | 'number' | 'bool' | 'date' | ClassType<any>;
 	trim?: boolean;
-	enum?: string[];
+	enum?: string[] | number[];
 	pattern?: RegExp;
 	message?: string;
 	label?: string;
 	default?: any;
-	min?: number;
-	max?: number;
+	min?: number | Date;
+	max?: number | Date;
 	lessThan?: number;
 	moreThan?: number;
 	positive?: boolean;
