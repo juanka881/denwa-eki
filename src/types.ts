@@ -81,9 +81,23 @@ export interface ModelMetadata {
 export interface ModelFieldMetadata {
 	key?: string;
 	from?: 'body' | 'query' | 'params';
-	required?: boolean;
-	format?: string;
-	type?: 'string' | 'number' | 'boolean' | any;
+	require?: boolean;
+	format?: 'email' | 'url' | 'uuid';
+	type?: 'string' | 'number' | 'bool' | 'date' | ClassType<any>;
+	array?: 'string' | 'number' | 'bool' | 'date' | ClassType<any>;
+	trim?: boolean;
+	enum?: string[];
+	pattern?: RegExp;
+	message?: string;
+	label?: string;
+	default?: any;
+	min?: number;
+	max?: number;
+	lessThan?: number;
+	moreThan?: number;
+	positive?: boolean;
+	negative?: boolean;
+	integer?: boolean;
 }
 
 export interface ClassType<T = any> {
