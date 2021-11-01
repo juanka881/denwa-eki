@@ -1,8 +1,11 @@
-import { ControllerConfigKey, getData } from '../framework';
-import { Context, ControllerConfig, ViewResult } from '../types';
 import path from 'path';
 import React from 'react';
 import { renderToStaticNodeStream } from 'react-dom/server';
+import { Context, getData } from '../context';
+import { ControllerConfig } from '../controller';
+import { AppProps, GetLayout } from '../render';
+import { ViewResult } from '../result';
+import { ControllerConfigKey } from '../types';
 
 export default async function viewResultHandler(result: ViewResult, context: Context): Promise<any>  {
 	const config: ControllerConfig = getData(context.request, ControllerConfigKey);
@@ -35,27 +38,34 @@ export default async function viewResultHandler(result: ViewResult, context: Con
 		throw new Error(`unable to find default app component from file: ${appPath}`);
 	}
 
-	const viewComponent = require(viewPath).default;
+	const viewModule = require(viewPath);
+	const viewComponent = viewModule.default;
 	if(!viewComponent) {
 		throw new Error(`unable to find default view component from file: ${viewPath}`);
 	}
 
-	const renderedAppView = React.createElement(appComponent, {
+	let layout: GetLayout = view => view;
+	if(typeof viewModule?.layout === 'function') {
+		layout = viewModule.layout;
+	}
+
+	const appProps: AppProps = {
 		view: viewComponent,
-		viewProps: {
+		layout,
+		props: {
 			request: request,
 			response: response,
-			locals: response.locals,
 			data: view.data
 		}
-	});
+	}
+	const renderedAppView = React.createElement(appComponent, appProps);
 
 	if(!response.statusCode) {
 		response.status(200);
 	}
 	
 	await new Promise<void>((resolve, reject) => {
-		response.write('<!DOCTYPE html>', (error) => {
+		response.write('<!DOCTYPE html>', error => {
 			if(error) {
 				return reject(error);
 			}
