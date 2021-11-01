@@ -51,7 +51,7 @@ export default async function viewResultHandler(result: ViewResult, context: Con
 
 	const appProps: AppProps = {
 		viewComponent: viewComponent,
-		props: {
+		viewProps: {
 			request: request,
 			response: response,
 			data: view.data

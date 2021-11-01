@@ -9,12 +9,12 @@ export interface ViewProps<T = any> {
 
 export interface AppProps {
 	viewComponent: React.ComponentType<any>;	
-	props: ViewProps;
+	viewProps: ViewProps;
 	layout?: GetLayout;
 }
 
 export interface LayoutProps {
-	props: ViewProps;
+	viewProps: ViewProps;
 	children: React.ReactNode;
 }
 
