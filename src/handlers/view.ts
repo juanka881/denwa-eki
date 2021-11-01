@@ -50,13 +50,13 @@ export default async function viewResultHandler(result: ViewResult, context: Con
 	}
 
 	const appProps: AppProps = {
-		view: viewComponent,
-		layout,
+		viewComponent: viewComponent,
 		props: {
 			request: request,
 			response: response,
 			data: view.data
-		}
+		},
+		layout
 	}
 	const renderedAppView = React.createElement(appComponent, appProps);
 

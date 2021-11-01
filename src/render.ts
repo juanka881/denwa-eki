@@ -8,9 +8,9 @@ export interface ViewProps<T = any> {
 }
 
 export interface AppProps {
-	view: React.ComponentType<any>;
-	layout?: GetLayout;
+	viewComponent: React.ComponentType<any>;	
 	props: ViewProps;
+	layout?: GetLayout;
 }
 
 export interface LayoutProps {
@@ -18,4 +18,4 @@ export interface LayoutProps {
 	children: React.ReactNode;
 }
 
-export type GetLayout = (view: React.ReactNode, props: ViewProps) => React.ReactNode;
+export type GetLayout = (props: AppProps) => React.ReactNode;
