@@ -39,8 +39,8 @@ export default async function viewResultHandler(result: ViewResult, context: Con
 	}
 
 	const viewModule = require(viewPath);
-	const viewComponent = viewModule.default;
-	if(!viewComponent) {
+	const ViewComponent = viewModule.default;
+	if(!ViewComponent) {
 		throw new Error(`unable to find default view component from file: ${viewPath}`);
 	}
 
@@ -50,7 +50,7 @@ export default async function viewResultHandler(result: ViewResult, context: Con
 	}
 
 	const appProps: AppProps = {
-		viewComponent: viewComponent,
+		ViewComponent,
 		viewProps: {
 			request: request,
 			response: response,
