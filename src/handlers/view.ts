@@ -44,7 +44,7 @@ export default async function viewResultHandler(result: ViewResult, context: Con
 		throw new Error(`unable to find default view component from file: ${viewPath}`);
 	}
 
-	let layout: GetLayout = view => view;
+	let layout: GetLayout | undefined;
 	if(typeof viewModule?.layout === 'function') {
 		layout = viewModule.layout;
 	}

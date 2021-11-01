@@ -9,7 +9,7 @@ export interface ViewProps<T = any> {
 
 export interface AppProps {
 	view: React.ComponentType<any>;
-	layout: GetLayout;
+	layout?: GetLayout;
 	props: ViewProps;
 }
 
