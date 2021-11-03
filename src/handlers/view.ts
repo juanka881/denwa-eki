@@ -60,8 +60,8 @@ export default async function viewResultHandler(result: ViewResult, context: Con
 	}
 	const renderedAppView = React.createElement(appComponent, appProps);
 
-	if(!response.statusCode) {
-		response.status(200);
+	if(!response.statusCode && view.status) {
+		response.status(view.status);
 	}
 	
 	await new Promise<void>((resolve, reject) => {

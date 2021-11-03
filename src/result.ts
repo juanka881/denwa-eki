@@ -3,7 +3,8 @@ export interface ActionResult {
 }
 
 export interface ViewResult extends ActionResult {
-	type: 'view'
+	type: 'view';
+	status: number;
 	name: string;
 	data?: any;
 }
@@ -14,12 +15,56 @@ export interface RedirectResult extends ActionResult {
 	url: string;
 }
 
-export function view(name: string, data?: any): ViewResult {
-	return {
-		type: 'view',
-		name,
-		data
+export function view(status: number, name: string, data?: any): ViewResult;
+export function view(name: string, data?: any): ViewResult;
+export function view(...args: any[]): ViewResult {
+	switch(args.length) {
+		// (name: string)
+		case 1: {
+			return {
+				type: 'view',
+				status: 200,
+				name: args[0],
+				data: undefined
+			}
+		}
+
+		// (status: number, name: string)
+		// (name: string, data?: any)
+		case 2: {
+			// (status: number, name: string)
+			if(typeof args[0] === 'number') {
+				return {
+					type: 'view',
+					status: args[0],
+					name: args[1],
+					data: undefined
+				}
+			}
+
+			// (name: string, data?: any)
+			if(typeof args[0] === 'string') {
+				return {
+					type: 'view',
+					status: 200,
+					name: args[0],
+					data: args[1]
+				}
+			}
+		}
+
+		// (status: number, name: string, data?: any)
+		case 3: {
+			return {
+				type: 'view',
+				status: args[0],
+				name: args[1],
+				data: args[2]
+			}
+		}
 	}
+
+	throw new Error(`invalid arguments length=${args.length}, args=${JSON.stringify(args)}`)
 }
 
 export function redirect(url: string): RedirectResult
