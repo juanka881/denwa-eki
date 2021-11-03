@@ -5,14 +5,11 @@ export interface GetCallsiteOptions {
 }
 
 export function getCallsites(): any[] {
-	if((Error as any).prepareStackTrace) {
-		const _prepareStackTrace = (Error as any).prepareStackTrace;
-		(Error as any).prepareStackTrace = (_: any, stack: any) => stack;
-		const stack = (new Error().stack as any).slice(1); 
-		(Error as any).prepareStackTrace = _prepareStackTrace;
-		return stack;
-	}
-	return [];
+	const _prepareStackTrace = (Error as any).prepareStackTrace;
+	(Error as any).prepareStackTrace = (_: any, stack: any) => stack;
+	const stack = (new Error().stack as any).slice(1); 
+	(Error as any).prepareStackTrace = _prepareStackTrace;
+	return stack;
 }
 
 export function getCallsite(options?: GetCallsiteOptions) {
