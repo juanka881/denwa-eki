@@ -71,9 +71,11 @@ export default async function viewResultHandler(result: ViewResult, context: Con
 			}
 	
 			try {
+				response.type('html');
 				renderToStaticNodeStream(renderedAppView)
 					.pipe(response)
-					.on('error', reject);
+					.on('error', reject)
+					.on('finish', resolve);
 			}
 			catch(renderError) {
 				reject(renderError);
