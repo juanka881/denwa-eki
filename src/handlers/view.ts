@@ -63,6 +63,8 @@ export default async function viewResultHandler(result: ViewResult, context: Con
 	if(!response.statusCode && view.status) {
 		response.status(view.status);
 	}
+
+	response.type('html');
 	
 	await new Promise<void>((resolve, reject) => {
 		response.write('<!DOCTYPE html>', error => {
@@ -70,8 +72,7 @@ export default async function viewResultHandler(result: ViewResult, context: Con
 				return reject(error);
 			}
 	
-			try {
-				response.type('html');
+			try {				
 				renderToStaticNodeStream(renderedAppView)
 					.pipe(response)
 					.on('error', reject)
