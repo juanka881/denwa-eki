@@ -197,15 +197,23 @@ export function mount(router: IRouter, prefix: string, type: ClassType, only?: O
 		let routePrefix = prefix;
 		let routePath = action.path;
 
+		// remove leading '/' 
 		if(routePrefix.endsWith('/')) {
 			routePrefix = routePrefix.substring(0, routePrefix.length - 1);
 		}
 
+		// remove ending '/'
 		if(routePath.startsWith('/')) {
-			routePath = routePath.substring(1, routePrefix.length);
+			routePath = routePath.substring(1);
 		}
 
-		const route = `${routePrefix}/${routePath}`;
+		let route = '';
+		if(routePrefix === '') {
+			route = `/${routePath}`;
+		}
+		else {
+			route = `/${routePrefix}/${routePath}`
+		}
 		const config: ControllerConfig = {
 			type,
 			name: type.name,
