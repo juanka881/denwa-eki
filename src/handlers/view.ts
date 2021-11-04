@@ -65,22 +65,15 @@ export default async function viewResultHandler(result: ViewResult, context: Con
 	}
 
 	response.type('html');
-	
-	await new Promise<void>((resolve, reject) => {
-		response.write('<!DOCTYPE html>', error => {
-			if(error) {
-				return reject(error);
-			}
-	
-			try {				
-				renderToStaticNodeStream(renderedAppView)
-					.pipe(response)
-					.on('error', reject)
-					.on('finish', resolve);
-			}
-			catch(renderError) {
-				reject(renderError);
-			}
-		});
+	response.write('<!DOCTYPE html>');
+
+	const promise = new Promise<void>((resolve, reject) => {
+		const stream = renderToStaticNodeStream(renderedAppView);
+		stream.on('end', () => resolve());
+		stream.on('error', error => reject(error));
+
+		stream.pipe(response);
 	});
+
+	await promise;
 }
