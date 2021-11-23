@@ -93,7 +93,7 @@ export class ContextImpl implements Context {
 				else if(key in this.request.params) {
 					(model as any)[key] = this.request.params[fieldKey];
 				}
-				else if(key in this.request.params) {
+				else if(key in this.request.body) {
 					(model as any)[key] = this.request.body[fieldKey];
 				}
 			}
