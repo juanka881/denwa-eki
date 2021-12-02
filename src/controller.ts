@@ -17,6 +17,7 @@ import {
 import { getCallerPath, getClassPropertyList } from './reflection';
 import { Context, getData, setData } from './context';
 import 'reflect-metadata';
+import { joinUrl } from './utils';
 
 export type HttpMethod = 'get' | 'post' | 'delete' | 'patch' | 'put' | 'head' | 'options';
 export type OnlyOptions = 'index' | 'show' | 'create' | 'edit' | 'delete' | string;
@@ -194,26 +195,7 @@ export function mount(router: IRouter, prefix: string, type: ClassType, only?: O
 			throw new Error(`unable to get action ${prop} from controller.actions metadata`);
 		}
 
-		let routePrefix = prefix;
-		let routePath = action.path;
-
-		// remove leading '/' 
-		if(routePrefix.endsWith('/')) {
-			routePrefix = routePrefix.substring(0, routePrefix.length - 1);
-		}
-
-		// remove ending '/'
-		if(routePath.startsWith('/')) {
-			routePath = routePath.substring(1);
-		}
-
-		let route = '';
-		if(routePrefix === '') {
-			route = `/${routePath}`;
-		}
-		else {
-			route = `/${routePrefix}/${routePath}`
-		}
+		const route = joinUrl(['/', prefix, action.path]);
 		const config: ControllerConfig = {
 			type,
 			name: type.name,
