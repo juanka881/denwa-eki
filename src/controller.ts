@@ -195,7 +195,11 @@ export function mount(router: IRouter, prefix: string, type: ClassType, only?: O
 			throw new Error(`unable to get action ${prop} from controller.actions metadata`);
 		}
 
-		const route = joinUrl(['/', prefix, action.path]);
+		let route = joinUrl(['/', prefix, action.path]);
+		if(route.endsWith('/'))  {
+			route = route.substring(0, route.length - 1);
+		}
+
 		const config: ControllerConfig = {
 			type,
 			name: type.name,
