@@ -33,7 +33,16 @@ export function setData(request: Request, key: string, value: any): void {
 		(request as any).data = data;
 	}
 
-	data.set(key, value);
+	data.set(key, value);	
+}
+
+export function deleteData(request: Request, key: string): void {
+	let data: Map<string, any> = (request as any).data;
+	if(!data) {
+		return;
+	}
+
+	data.delete(key);
 }
 
 export function setContext(tiny?: Tiny): RequestHandler {

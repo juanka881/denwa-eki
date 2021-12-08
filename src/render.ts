@@ -10,13 +10,10 @@ export interface ViewProps<T = any> {
 export interface AppProps {
 	ViewComponent: React.ComponentType<any>;	
 	viewProps: ViewProps;
-	layout?: GetLayout;
 }
 
 export interface LayoutProps {
 	children: React.ReactNode;
 }
-
-export type GetLayout = (view: React.ReactNode) => React.ReactNode;
 
 export const AppContext = React.createContext<AppProps | undefined>(undefined);

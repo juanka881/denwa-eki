@@ -15,15 +15,40 @@ import {
 	ControllerKey 
 } from './types';
 import { getCallerPath, getClassPropertyList } from './reflection';
-import { Context, getData, setData } from './context';
+import { Context, getData, setData, deleteData } from './context';
 import 'reflect-metadata';
 import { joinUrl } from './utils';
+import pluralize from 'pluralize';
+import { paramCase } from 'change-case';
 
 export type HttpMethod = 'get' | 'post' | 'delete' | 'patch' | 'put' | 'head' | 'options';
 export type OnlyOptions = 'index' | 'show' | 'create' | 'edit' | 'delete' | string;
 
 export interface ControllerMetadata {
+	/**
+	 * controlle name, use for debuging
+	 */
+	name: string;
+
+	/**
+	 * controller route prefix, use to 
+	 * mount set the controllers mount location
+	 * in the router
+	 */
+	prefix: string;
+
+	/**
+	 * controller filename location, 
+	 * use to determine the relative location
+	 * of controller's views
+	 */
 	filename: string;
+
+	/**
+	 * controllers action map,
+	 * use to mount the controllers actions 
+	 * handlers in the router
+	 */
 	actions: Map<string, ControllerActionMetadata>;
 }
 
@@ -41,16 +66,11 @@ export interface ControllerConfig {
 	method: HttpMethod;
 	prefix: string;
 	path: string;
-	route: string;
-	
+	route: string;	
 }
 
-export interface MountOptions<T> {
-	type: ClassType<T>;
-	prefix: string;
-	action?: keyof T;
-	path?: string;
-	method?: HttpMethod;
+export interface ResourceOptions {
+	prefix?: string;
 	only?: OnlyOptions[];
 }
 
@@ -58,7 +78,9 @@ export const ControllerMetadataKey = Symbol('controller');
 export const ControllerActionMetadataKey = Symbol('action');
 export const ControllerActionListMetadataKey = Symbol('controllerActionList');
 
-export function controller(filename?: string) {
+export function controller(metadata?: Omit<Partial<ControllerMetadata>, 'actions'>) {
+	let { filename, name, prefix } = metadata ?? {};
+
 	if(!filename) {
 		const callPath = getCallerPath();
 		if(!callPath) {
@@ -69,8 +91,26 @@ export function controller(filename?: string) {
 	}
 
 	return function(type: any) {
+		if(!name) {
+			name = type.name;
+
+			if(!name) {
+				throw new Error(`unable to get controller name from type.name`);
+			}
+
+			if(name.endsWith('Controller')) {
+				name = name.substring(0, name.length - 'Controller'.length);
+			}
+		}
+
+		if(!prefix) {
+			prefix = paramCase(pluralize(name));
+		}
+
 		const controller: ControllerMetadata = {
 			filename: filename!,
+			name, 
+			prefix,
 			actions: new Map<string, ControllerActionMetadata>()
 		}
 		
@@ -89,59 +129,74 @@ export function action(method?: HttpMethod, path?: string) {
 		const name = property;
 		if(!method && !path) {
 			switch(name) {
-				case 'index': 
-					method = 'get';
-					path = '/';
-					break;
-
-				case 'create': 
-					method = 'get';
-					path = '/create';
-					break;
-
-				case 'save':
-					method = 'post';
-					path = '/';
-					break;
-
-				case 'saveDone':
-					method = 'get';
-					path = 'save/done';
-					break;
-
-				case 'updateDone':
-					method = 'get';
-					path = 'update/done';
-					break;
-
-				case 'deleteDone':
-					method = 'get';
-					path = 'delete/done';
-					break;
-
+				/**
+				 * show methods
+				 */
 				case 'show':
 					method = 'get';
 					path = '/:id'
 					break;
 
+				/**
+				 * index methods
+				 */
+				case 'index': 
+					method = 'get';
+					path = '/';
+					break;
+
+				/**
+				 * create methods
+				 */
+				case 'create': 
+					method = 'get';
+					path = '/create';
+					break;
+
+				case 'doCreate':
+					method = 'post';
+					path = '/';
+					break;
+
+				case 'createDone':
+					method = 'get';
+					path = '/create/done';
+					break;
+
+				/**
+				 * edit methods
+				 */
 				case 'edit': 
 					method = 'get';
 					path = '/:id/edit';
 					break;
-
-				case 'update':
+				
+				case 'doEdit':
 					method = 'patch';
 					path = '/:id';
 					break;
 
+				case 'editDone':
+					method = 'get';
+					path = '/edit/done';
+					break;
+
+				/**
+				 * delete methods
+				 */
 				case 'delete':
 					method = 'get';
 					path = '/:id/delete';
 					break;
 
-				case 'destroy':
+				case 'doDelete':
 					method = 'delete';
 					path = '/:id';
+					break;
+
+				case 'deleteDone':
+					method = 'get';
+					path = 'delete/done';
 					break;
 
 				default:
@@ -155,7 +210,7 @@ export function action(method?: HttpMethod, path?: string) {
 		}
 
 		if(!path) {
-			path = property;
+			path = paramCase(property);
 		}
 
 		const metadata: ControllerActionMetadata = {
@@ -170,8 +225,6 @@ export function action(method?: HttpMethod, path?: string) {
 	}
 }
 
-
-
 export function getControllerMetadata(type: any): ControllerMetadata {
 	const metadata: ControllerMetadata = Reflect.getMetadata(ControllerMetadataKey, type);
 	if(!metadata) {
@@ -181,9 +234,10 @@ export function getControllerMetadata(type: any): ControllerMetadata {
 	return metadata;
 }
 
-export function mount(router: IRouter, prefix: string, type: ClassType, only?: OnlyOptions[]): void {
+export function resource(router: IRouter, type: ClassType, options?: ResourceOptions): void {
 	const controller = getControllerMetadata(type);
 	const props = getClassPropertyList(type.prototype, ControllerActionListMetadataKey);
+	let { prefix, only = [] } = options ?? {};
 	
 	for(const prop of props) {
 		if(only && only.includes(prop)) {
@@ -195,14 +249,18 @@ export function mount(router: IRouter, prefix: string, type: ClassType, only?: O
 			throw new Error(`unable to get action ${prop} from controller.actions metadata`);
 		}
 
+		if(!prefix) {
+			prefix = controller.prefix;
+		}
+
 		let route = joinUrl(['/', prefix, action.path]);
-		if(route.endsWith('/'))  {
+		if(route.endsWith('/')) {
 			route = route.substring(0, route.length - 1);
 		}
 
 		const config: ControllerConfig = {
 			type,
-			name: type.name,
+			name: controller.name,
 			action: action.name,
 			filename: controller.filename,
 			method: action.method,
@@ -211,7 +269,12 @@ export function mount(router: IRouter, prefix: string, type: ClassType, only?: O
 			route
 		}
 
-		router[config.method](config.route, setController(config), actionHandler);
+		router[config.method](config.route, 
+			setController(config), 
+			actionHandler, 
+			resultHandler, 
+			clearController
+		);
 	}
 }
 
@@ -220,8 +283,6 @@ export function wrap(handler: (request: Request, response: Response, next: NextF
 		Promise.resolve(handler(request, response, next)).catch(next);
 	}
 }
-
-
 
 export function setController(config: ControllerConfig): RequestHandler {
 	return function(request: Request, response: Response, next: NextFunction) {
@@ -236,6 +297,12 @@ export function setController(config: ControllerConfig): RequestHandler {
 		
 		next();
 	}
+}
+
+export function clearController(request: Request, response: Response, next: NextFunction): void {
+	deleteData(request, ControllerConfigKey);
+	deleteData(request, ControllerKey);
+	next();
 }
 
 async function actionHandler(request: Request, response: Response, next: NextFunction): Promise<any> {
