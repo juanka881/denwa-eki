@@ -253,7 +253,7 @@ export function resource(router: IRouter, type: ClassType, options?: ResourceOpt
 			prefix = controller.prefix;
 		}
 
-		let route = urlJoin(prefix, action.path);
+		let route = urlJoin('/', prefix, action.path);
 		if(route.endsWith('/')) {
 			route = route.substring(0, route.length - 1);
 		}
