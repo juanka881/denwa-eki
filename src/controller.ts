@@ -17,7 +17,7 @@ import {
 import { getCallerPath, getClassPropertyList } from './reflection';
 import { Context, getData, setData, deleteData } from './context';
 import 'reflect-metadata';
-import { joinUrl } from './utils';
+import urlJoin from 'url-join';
 import pluralize from 'pluralize';
 import { paramCase } from 'change-case';
 
@@ -253,7 +253,7 @@ export function resource(router: IRouter, type: ClassType, options?: ResourceOpt
 			prefix = controller.prefix;
 		}
 
-		let route = joinUrl(['/', prefix, action.path]);
+		let route = urlJoin(prefix, action.path);
 		if(route.endsWith('/')) {
 			route = route.substring(0, route.length - 1);
 		}
@@ -269,8 +269,9 @@ export function resource(router: IRouter, type: ClassType, options?: ResourceOpt
 			route
 		}
 
-		router[config.method](config.route, 
-			setController(config), 
+		router[config.method](
+			config.route, 
+			setController(config),
 			actionHandler, 
 			resultHandler, 
 			clearController
