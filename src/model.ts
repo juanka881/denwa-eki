@@ -1,7 +1,8 @@
 import { getClassPropertyList } from './reflection';
 import { ClassType } from './types';
 import * as yup from 'yup';
-
+import { capitalCase } from 'change-case';
+ 
 export interface ModelMetadata {
 	fields: Map<string, ModelFieldMetadata>;
 }
@@ -171,6 +172,12 @@ export function model() {
 
 export function field(options?: ModelFieldMetadata) {
 	return function(type: any, property: string) {
+		if(options) {
+			if(!options.label) {
+				options.label = capitalCase(property);
+			}
+		}
+		
 		Reflect.defineMetadata(ModelFieldMetadataKey, options, type, property);
 		
 		const props = getClassPropertyList(type, ModelFieldListMetadataKey);
