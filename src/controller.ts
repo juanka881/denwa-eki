@@ -161,7 +161,7 @@ export function action(method?: HttpMethod, path?: string) {
 
 				case 'doCreate':
 					method = 'post';
-					path = '/';
+					path = '/create';
 					break;
 
 				case 'createDone':
@@ -179,7 +179,7 @@ export function action(method?: HttpMethod, path?: string) {
 				
 				case 'doEdit':
 					method = 'patch';
-					path = '/:id';
+					path = '/:id/edit';
 					break;
 
 				case 'editDone':
@@ -197,12 +197,12 @@ export function action(method?: HttpMethod, path?: string) {
 
 				case 'doDelete':
 					method = 'delete';
-					path = '/:id';
+					path = '/:id/delete';
 					break;
 
 				case 'deleteDone':
 					method = 'get';
-					path = 'delete/done';
+					path = '/delete/done';
 					break;
 
 				default:
