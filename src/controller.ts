@@ -20,6 +20,7 @@ import 'reflect-metadata';
 import urlJoin from 'url-join';
 import pluralize from 'pluralize';
 import { paramCase } from 'change-case';
+import { Log } from '@denwa/log';
 
 export type HttpMethod = 'get' | 'post' | 'delete' | 'patch' | 'put' | 'head' | 'options';
 export type OnlyOptions = 'index' | 'show' | 'create' | 'edit' | 'delete' | string;
@@ -72,6 +73,11 @@ export interface ControllerConfig {
 export interface ResourceOptions {
 	prefix?: string;
 	only?: OnlyOptions[];
+}
+
+export interface ResourceBuilder {
+	router: IRouter;
+	(type: ClassType, options?: ResourceOptions): void;
 }
 
 export const ControllerMetadataKey = Symbol('controller');
@@ -234,11 +240,20 @@ export function getControllerMetadata(type: any): ControllerMetadata {
 	return metadata;
 }
 
-export function resource(router: IRouter, type: ClassType, options?: ResourceOptions): void {
+export function getResourceBuilder(router: IRouter, log: Log): ResourceBuilder {
+	const builder: ResourceBuilder = function(type: ClassType, options?: ResourceOptions) {
+		resource(router, log, type, options);
+	}
+	builder.router = router;
+
+	return builder;
+}
+
+export function resource(router: IRouter, log: Log, type: ClassType, options?: ResourceOptions): void {
 	const controller = getControllerMetadata(type);
 	const props = getClassPropertyList(type.prototype, ControllerActionListMetadataKey);
 	let { prefix, only = [] } = options ?? {};
-	
+
 	for(const prop of props) {
 		if(only && only.includes(prop)) {
 			continue;
@@ -254,6 +269,10 @@ export function resource(router: IRouter, type: ClassType, options?: ResourceOpt
 		}
 
 		let route = urlJoin('/', prefix, action.path);
+		if(route.startsWith('//')) {
+			route = route.substring(1);
+		}
+
 		if(route.endsWith('/')) {
 			route = route.substring(0, route.length - 1);
 		}
@@ -268,6 +287,13 @@ export function resource(router: IRouter, type: ClassType, options?: ResourceOpt
 			path: action.path,
 			route
 		}
+
+		log.debug(`register route: ${type.name}#${config.name} ${config.method} ${config.route}`, {
+			controller: type.name,
+			action: config.action,
+			method: config.method,
+			route: config.route
+		});
 
 		router[config.method](
 			config.route, 
