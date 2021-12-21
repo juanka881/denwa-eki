@@ -1,3 +1,4 @@
+import { ClassKeys } from '../utils/reflection';
 import { getModelValidationSchema, setModelValidationSchema } from './metadata';
 /**
  * validation error object
@@ -226,30 +227,38 @@ export class ValidationSchema {
 }
 
 /**
- * validates context use to build up validations
- * for a class, passed to validation helper functions
- * to setup validators
+ * validator builder type
  */
-export interface ValidatesContext<T> {
-	/**
-	 * validation target class
-	 */
-	target: T;
+export type ValidatorBuilder = (properties: string[]) => Validator;
 
-	/**
-	 * validation schema for class
-	 */
-	schema: ValidationSchema;
-}
+/**
+ * validate builder callback, takes a list
+ */
+export type ValidateBuilder<T extends Function> = (properties: ClassKeys<T> | ClassKeys<T>[], builder: ValidatorBuilder) => void;
 
-export function validates<T extends Function>(target: T, builder: (schema: ValidatesContext<T>) => void): void {
+/**
+ * validation builder, takes a callback that uses the validate
+ * function to register validation for class properties
+ * @param target class type
+ * @param builder validate builder 
+ */
+export function validation<T extends Function>(target: T, builder: (validate: ValidateBuilder<T>) => void): void {
 	let schema = getModelValidationSchema(target);
 	if(!schema) {
 		schema = new ValidationSchema();
 		setModelValidationSchema(target, schema);
 	}
 
-	builder({ target, schema });
+	function validate<T extends Function>(properties: ClassKeys<T> | ClassKeys<T>[], builder: ValidatorBuilder): void {
+		if(!Array.isArray(properties)) {
+			properties = [properties]
+		}
+
+		const validator = builder(properties as string[]);
+		schema!.add(validator);
+	}
+
+	builder(validate);
 }
 
 export const TOKEN_FORMAT = /\{([0-9a-zA-Z_]+)\}/g;
@@ -278,4 +287,3 @@ export function format(template: string, options: { [key: string]: any }): strin
 	const text = template.replace(TOKEN_FORMAT, replace);
 	return text;
 }
-

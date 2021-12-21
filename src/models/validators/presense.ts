@@ -1,5 +1,4 @@
-import { ClassKeys } from '../../utils/reflection';
-import { EachValidator, EachValidatorOptions, format, ValidatesContext, ValidatorResult } from '../validation';
+import { EachValidator, EachValidatorOptions, format, ValidatorBuilder, ValidatorResult } from '../validation';
 
 export class PresenseValidator extends EachValidator {
 	name = 'presense';
@@ -21,8 +20,8 @@ export class PresenseValidator extends EachValidator {
 	}
 }
 
-export function presense<T extends Function>(ctx: ValidatesContext<T>, properties: ClassKeys<T>[]): void {
-	ctx.schema.add(new PresenseValidator({ 
-		properties: properties as string[]
-	}));
+export function presense(): ValidatorBuilder {
+	return function(properties: string[]) {
+		return new PresenseValidator({ properties });
+	}
 }

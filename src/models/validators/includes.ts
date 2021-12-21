@@ -1,5 +1,4 @@
-import { ClassKeys } from '../../utils/reflection';
-import { EachValidator, EachValidatorOptions, format, ValidatesContext, ValidatorResult } from '../validation';
+import { EachValidator, EachValidatorOptions, format, ValidatorBuilder, ValidatorResult } from '../validation';
 
 export interface IncludesOptions extends EachValidatorOptions {
 	values: any[];
@@ -25,9 +24,11 @@ export class IncludesValidator extends EachValidator<IncludesOptions> {
 	}
 }
 
-export function includes<T extends Function>(ctx: ValidatesContext<T>, properties: ClassKeys<T>[], values: any[]): void {
-	ctx.schema.add(new IncludesValidator({
-		properties: properties as string[],
-		values
-	}));
+export function includes(values: any[]): ValidatorBuilder {
+	return function(properties: string[]) {
+		return new IncludesValidator({
+			properties,
+			values
+		});
+	}
 }

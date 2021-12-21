@@ -2,7 +2,7 @@ import * as metadata from './metadata';
 import * as validation from './validation';
 export { modelDecorator as model } from './metadata';
 export { fieldDecorator as field } from './metadata';
-export { validates } from './validation';
+export { validation } from './validation';
 export { presense } from './validators/presense';
 export { format } from './validators/format';
 export { includes } from './validators/includes';

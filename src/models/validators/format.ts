@@ -1,5 +1,5 @@
 import { ClassKeys } from '../../utils/reflection';
-import { EachValidator, EachValidatorOptions, ValidatesContext, ValidatorResult, format as formatText} from '../validation';
+import { EachValidator, EachValidatorOptions, ValidatorBuilder, ValidatorResult, format as formatText} from '../validation';
 
 export interface FormatOptions extends EachValidatorOptions {
 	format: 'email' | 'url' | 'uuid' | 'us-zipcode';
@@ -68,32 +68,41 @@ export class FormatValidator extends EachValidator<FormatOptions> {
 	}
 }
 
-export function format<T extends Function>(ctx: ValidatesContext<T>, options: { properties: ClassKeys<T>[] } & Partial<FormatOptions>): void;
-export function format<T extends Function>(ctx: ValidatesContext<T>, properties: ClassKeys<T>[], format: FormatOptions['format']): void;
-export function format(...args: any[]): void {
-	let ctx: ValidatesContext<any>;
-	let options: FormatOptions;
+export function format<T extends Function>(options: Partial<FormatOptions>): ValidatorBuilder;
+export function format<T extends Function>(format: FormatOptions['format']): ValidatorBuilder;
+export function format(...args: any[]): ValidatorBuilder {
+	return function(properties: string[]) {
+		let options: FormatOptions;
+		let invalid = false;
 
-	switch(args.length) {
-		case 2: {
-			ctx = args[0];
-			options = args[1];
-			break;
-		}
-
-		case 3: {
-			ctx = args[0];
-			options = {
-				properties: args[1],
-				format: args[2]
+		switch(args.length) {
+			case 1: {
+				if(typeof args[0] === 'string') {
+					options = {
+						properties,
+						format: args[0] as FormatOptions['format']
+					}
+				}
+				else if(typeof args[0] === 'object') {
+					options = args[0];
+				}
+				else {
+					invalid = true;
+				}
+				
+				break;
 			}
-			break;
+	
+			default: {
+				invalid = true;
+				break;
+			}
 		}
 
-		default: {
+		if(invalid) {
 			throw new Error(`invalid method overload call, arguments: ${JSON.stringify(args)}`);
 		}
+	
+		return new FormatValidator(options!);
 	}
-
-	ctx.schema.add(new FormatValidator(options));
 }
