@@ -108,8 +108,14 @@ export class EachValidator<TOptions extends EachValidatorOptions = EachValidator
 			}
 
 			const WHITESPACE_PATTERN = /^[\s\n\r]*$/;
-			if(this.options.allowEmpty && _.isNil(value) || (typeof value === 'string' && WHITESPACE_PATTERN.test(value))) {
-				continue;
+			if(this.options.allowEmpty) {
+				if(_.isNil(value)) {
+					continue;
+				}
+
+				if(typeof value === 'string' && WHITESPACE_PATTERN.test(value)) {
+					continue;
+				}
 			}
 
 			const errors = this.validateEach(target, property, value);

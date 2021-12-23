@@ -17,20 +17,6 @@ export class FormatValidator extends EachValidator<FormatOptions> {
 		super(options);
 	}
 
-	getPattern(): RegExp | undefined {
-		if(this.options.pattern instanceof RegExp) {
-			return this.options.pattern;
-		}
-
-		if(typeof this.options.pattern === 'string') {
-
-		}
-
-		switch(this.options.pattern) {
-
-		}
-	}
-
 	validateEach(target: any, property: string, value: any): ValidatorResult {
 		let template: string = '';
 		let pattern: RegExp;
@@ -43,7 +29,7 @@ export class FormatValidator extends EachValidator<FormatOptions> {
 			switch(this.options.pattern) {
 				case 'email': {
 					pattern = EMAIL_PATTERN;
-					template = '{label} must be a email address';
+					template = '{label} must be a email valid address';
 					break;
 				}
 	
