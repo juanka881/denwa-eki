@@ -1,6 +1,6 @@
 {
   "name": "@denwa/eki",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "express app framework",
   "main": "index.js",
   "scripts": {
@@ -16,6 +16,7 @@
   "devDependencies": {
     "@types/chai": "^4.2.22",
     "@types/express": "^4.17.13",
+    "@types/lodash": "^4.14.178",
     "@types/mocha": "^9.0.0",
     "@types/node": "^16.11.6",
     "@types/pluralize": "^0.0.29",
@@ -32,6 +33,7 @@
     "@denwa/tiny": "^1.0.0",
     "change-case": "^4.1.2",
     "express": "^4.17.1",
+    "lodash": "^4.17.21",
     "pluralize": "^8.0.0",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",

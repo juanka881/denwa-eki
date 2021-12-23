@@ -1,7 +1,7 @@
 import { EachValidator, EachValidatorOptions, ValidatorBuilder, ValidatorResult, formatText as formatText, createError} from '../validation';
 
 export interface FormatOptions extends EachValidatorOptions {
-	pattern: 'email' | 'url' | 'uuid' | 'us-zipcode';
+	pattern: 'email' | 'url' | 'uuid' | 'us-zipcode' | RegExp;
 }
 
 // https://github.com/ajv-validator/ajv-formats/blob/4dd65447575b35d0187c6b125383366969e6267e/src/formats.ts
@@ -17,41 +17,65 @@ export class FormatValidator extends EachValidator<FormatOptions> {
 		super(options);
 	}
 
-	validateEach(target: any, property: string, value: any): ValidatorResult {
-		let template: string = '';
+	getPattern(): RegExp | undefined {
+		if(this.options.pattern instanceof RegExp) {
+			return this.options.pattern;
+		}
+
+		if(typeof this.options.pattern === 'string') {
+
+		}
 
 		switch(this.options.pattern) {
-			case 'email': {
-				if(!EMAIL_FORMAT.test(value)) {
+
+		}
+	}
+
+	validateEach(target: any, property: string, value: any): ValidatorResult {
+		let template: string = '';
+		let pattern: RegExp;
+
+		if(this.options.pattern instanceof RegExp) {
+			pattern = this.options.pattern;
+			template = '{label} must match {pattern}';
+		}
+		else if(typeof this.options.pattern === 'string') {
+			switch(this.options.pattern) {
+				case 'email': {
+					pattern = EMAIL_FORMAT;
 					template = '{label} must be a email address';
+					break;
 				}
-				break;
-			}
-
-			case 'url': {
-				if(!URL_FORMAT.test(value)) {
-					template = '{label} must be a url address';
+	
+				case 'url': {
+					pattern = URL_FORMAT;
+					template = '{label} must be a valid URL';
+					break;
 				}
-				break;
-			}
-
-			case 'uuid': {
-				if(UUID_FORMAT.test(value)) {
+	
+				case 'uuid': {
+					pattern = UUID_FORMAT;
 					template = '{label} must be a UUID value';
+					break;
 				}
-				break;
-			}
-
-			case 'us-zipcode': {
-				if(US_ZIPCODE_FORMAT.test(value)) {
+	
+				case 'us-zipcode': {
+					pattern = US_ZIPCODE_FORMAT;
 					template = '{label} must be a US Zip Code';
+					break;
 				}
-				break;
+				
+				default: {
+					throw new Error(`invalid options.pattern, pattern=${this.options.pattern}`);
+				}
 			}
-			
-			default: {
-				throw new Error(`invalid options.format, format=${this.options.pattern}`);
-			}
+		}
+		else {
+			throw new Error(`invalid options.pattern, pattern=${this.options.pattern}`);
+		}
+
+		if(pattern.test(value)) {
+			return;
 		}
 
 		return [

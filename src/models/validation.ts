@@ -1,6 +1,7 @@
 import { ClassKeys } from '../utils/reflection';
 import { getModelMetadata } from './metadata';
 import { capitalCase } from 'change-case';
+import _ from 'lodash';
 
 /**
  * validation error object
@@ -273,7 +274,7 @@ export function validation<T extends Function>(target: T, builder: (validate: Va
 }
 
 export const TOKEN_FORMAT = /\{([0-9a-zA-Z_]+)\}/g;
-export function formatText(template: string, label: string, options: { [key: string]: any }): string {
+export function formatText(template: string, label: string, data: { [key: string]: any }): string {
 	function replace(match: string, propertyName: string, offset: number) {
         let result = '';
 
@@ -286,7 +287,7 @@ export function formatText(template: string, label: string, options: { [key: str
 				return label;
 			}
 
-            result = options && options.hasOwnProperty(propertyName) ? options[propertyName] : null
+			result = _.get(data, propertyName, undefined);
             if (result === null || result === undefined) {
                 return ''
             }

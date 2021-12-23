@@ -1,4 +1,4 @@
-import { createError, EachValidator, EachValidatorOptions, formatText, ValidatorBuilder, ValidatorResult } from '../validation';
+import { createError, EachValidator, EachValidatorOptions, ValidatorBuilder, ValidatorResult } from '../validation';
 
 export class PresenseValidator extends EachValidator {
 	name = 'presense';
