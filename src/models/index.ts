@@ -6,7 +6,8 @@ export { validation } from './validation';
 export { presense } from './validators/presense';
 export { format } from './validators/format';
 export { includes } from './validators/includes';
-export { confirm } from './validators/confirmation';
+export { confirmation } from './validators/confirmation';
+export { len } from './validators/stringLength';
 
 @metadata.modelDecorator()
 export class Model {

@@ -1,23 +1,23 @@
 import { createError, EachValidator, EachValidatorOptions, ValidationError, ValidatorBuilder, ValidatorResult } from '../validation';
 
-export interface LengthOptions extends EachValidatorOptions {
+export interface StringLengthOptions extends EachValidatorOptions {
 	min?: number;
 	max?: number;
 	range?: [number, number];
 	eq?: number;
 }
 
-export interface LengthHelperOptions {
+export interface StringLengthHelperOptions {
 	min?: number;
 	max?: number;
 	range?: [number, number];
 	eq?: number;
 }
 
-export class LengthValidator extends EachValidator<LengthOptions> {
-	name = 'length';
+export class StringLengthValidator extends EachValidator<StringLengthOptions> {
+	name = 'stringLength';
 
-	constructor(options: LengthOptions) {
+	constructor(options: StringLengthOptions) {
 		super(options);
 	}
 
@@ -48,9 +48,9 @@ export class LengthValidator extends EachValidator<LengthOptions> {
 	}
 }
 
-export function length(helperOptions: LengthHelperOptions): ValidatorBuilder {
+export function len(helperOptions: StringLengthHelperOptions): ValidatorBuilder {
 	return function(options) {
-		return new LengthValidator({
+		return new StringLengthValidator({
 			...helperOptions,
 			...options
 		});

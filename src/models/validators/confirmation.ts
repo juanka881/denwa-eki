@@ -21,7 +21,7 @@ export class ConfirmationValidator extends EachValidator {
 	}
 }
 
-export function confirm(): ValidatorBuilder {
+export function confirmation(): ValidatorBuilder {
 	return function(options) {
 		return new ConfirmationValidator(options);
 	}

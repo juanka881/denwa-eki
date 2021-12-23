@@ -43,6 +43,18 @@ export interface ValidatorOptions {
 	message?: string;
 
 	/**
+	 * allow null or undefined values
+	 * defaults = false
+	 */
+	allowNull?: boolean;
+
+	/**
+	 * allow empty string values
+	 * defaults = false
+	 */
+	allowEmpty?: boolean;
+
+	/**
 	 * additional validator options
 	 */
 	[key: string]: any
@@ -91,6 +103,15 @@ export class EachValidator<TOptions extends EachValidatorOptions = EachValidator
 		let result: ValidatorResult;
 		for(const property of this.options.properties) {
 			const value = target[property];
+			if(_.isNil(value) && this.options.allowNull) {
+				continue;
+			}
+
+			const WHITESPACE_PATTERN = /^[\s\n\r]*$/;
+			if(this.options.allowEmpty && _.isNil(value) || (typeof value === 'string' && WHITESPACE_PATTERN.test(value))) {
+				continue;
+			}
+
 			const errors = this.validateEach(target, property, value);
 			if(errors && errors.length > 0) {
 				result = result ? result.concat(errors) : errors;
@@ -230,12 +251,24 @@ export interface ValidateOverrideOptions {
 	/**
 	 * label overrides
 	 */
-	label?: string
+	label?: string;
 
 	/**
 	  * message overrides
 	  */
-	message?: string
+	message?: string;
+
+	/**
+	 * allow null or undefined values
+	 * defaults = false
+	 */
+	allowNull?: boolean;
+
+	/**
+	  * allow empty string values
+	  * defaults = false
+	  */
+	allowEmpty?: boolean;
 }
 
 /**
@@ -261,8 +294,7 @@ export function validation<T extends Function>(target: T, builder: (validate: Va
 
 		// build labels
 		const options: EachValidatorOptions = {
-			label: overrides?.label,
-			message: overrides?.message,
+			...overrides,
 			properties: properties as string[]
 		}
 
@@ -273,7 +305,7 @@ export function validation<T extends Function>(target: T, builder: (validate: Va
 	builder(validate);
 }
 
-export const TOKEN_FORMAT = /\{([0-9a-zA-Z_]+)\}/g;
+export const TOKEN_PATTERN = /\{([0-9a-zA-Z_]+)\}/g;
 export function formatText(template: string, label: string, data: { [key: string]: any }): string {
 	function replace(match: string, propertyName: string, offset: number) {
         let result = '';
@@ -300,7 +332,7 @@ export function formatText(template: string, label: string, data: { [key: string
         }
 	}
 
-	const text = template.replace(TOKEN_FORMAT, replace);
+	const text = template.replace(TOKEN_PATTERN, replace);
 	return text;
 }
 
