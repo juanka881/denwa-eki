@@ -53,6 +53,20 @@ export interface ControllerMetadata {
 	actions: Map<string, ActionMetadata>;
 }
 
+/**
+ * gets the controller filename by searching
+ * the callstack, and finding the file
+ * that has the current process cwd, and 
+ * ends with controller.js
+ * @returns filename if found, undefined otherwise
+ */
+export function getControllerFileName(): string | undefined {
+	const CONTROLLER_PATTERN = /[c|C]ontroller\.js$/gm;
+	const filenames: string[] = reflection.getCallsites().map(x => x.getFileName());
+	const filename = filenames.find(x => x.startsWith(process.cwd()) && CONTROLLER_PATTERN.test(x));
+	return filename;
+}
+
 export function getControllerMetadata(target: Object): ControllerMetadata {
 	const metadata = Reflect.getMetadata(ControllerMetadataKey, target);
 	if(!metadata) {
@@ -128,12 +142,12 @@ export function defineControllerMetadata(target: Object, options: Partial<Contro
 export function controllerDecorator(options?: Partial<ControllerMetadata>): ClassDecorator {
 	options = options ?? {};
 	if(!options.filename) {
-		const callPath = reflection.getCallerPath();
-		if(!callPath) {
+		const filename = getControllerFileName();
+		if(!filename) {
 			throw new Error(`unable to get controller filename`);
 		}
 
-		options.filename = callPath;
+		options.filename = filename;
 	}
 
 	return function(target: Object) {
@@ -143,7 +157,7 @@ export function controllerDecorator(options?: Partial<ControllerMetadata>): Clas
 }
 
 export function actionDecorator(method?: HttpMethod, path?: string): PropertyDecorator {
-	const filename = reflection.getCallerPath();
+	const filename = getControllerFileName();
 	if(!filename) {
 		throw new Error(`unable to get controller filename`);
 	}
