@@ -139,7 +139,7 @@ export async function handleResult(request: Request, response: Response, next: N
 			}
 
 			case 'redirect': {
-				return await results.viewHandler(result, context);
+				return await results.redirectHandler(result, context);
 			}
 
 			default:
