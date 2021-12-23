@@ -8,11 +8,6 @@ import { ValidationSchema } from './validation';
  */
 export interface FieldMetadata {
 	/**
-	 * field label override, defaults to property in capital case
-	 */
-	label?: string;
-
-	/**
 	 * field key on the source object to read model from
 	 */
 	key?: string;
@@ -54,17 +49,41 @@ export const ModelMetadataKey = Symbol('ModelMetadataKey');
  */
 export const FieldMetadataKey = Symbol('FieldMetadataKey');
 
+/**
+ * checks if the given target type has metadata
+ * @param target target type
+ * @returns boolean value
+ */
+export function hasModelMetadata(target: Object): boolean {
+	target = reflection.getConstructor(target);	
+	return Reflect.getMetadata(ModelMetadataKey, target) !== undefined;
+}
 
+/**
+ * gets a models metadata object, if it does not exists it throws an error
+ * @param target target class type
+ * @returns model metadata object
+ */
 export function getModelMetadata(target: Object): ModelMetadata {
+	target = reflection.getConstructor(target);
+	
 	const metadata = Reflect.getMetadata(ModelMetadataKey, target);
 	if(!metadata) {
-		throw new Error(`class=${target} requires @model() decorator`);
+		throw new Error(`class=${target} requires @model() decorator or inheriting from a class with @model() decorator`);
 	}
 
 	return metadata;
 }
 
+/**
+ * get a model's field metadata object, if it does not exists
+ * it throws an error
+ * @param target target class type
+ * @param property property name
+ * @returns mode's field metadata object
+ */
 export function getFieldMetadata(target: Object, property: string): FieldMetadata {
+	target = reflection.getConstructor(target);
 	const metadata = Reflect.getMetadata(FieldMetadataKey, target, property);
 	if(!metadata) {
 		throw new Error(`class=${target} property=${property} requires @field decorator`);
@@ -73,28 +92,27 @@ export function getFieldMetadata(target: Object, property: string): FieldMetadat
 	return metadata;
 }
 
-export function setFieldMetadata(target: Object, property: string, field: FieldMetadata): void {
-	Reflect.defineMetadata(FieldMetadataKey, field, target, property);
-}
+/**
+ * defines a models metadata object on the given target,
+ * inherits and merges metadata from parent class if it exists
+ * @param target target type
+ * @returns model metadata object
+ */
+export function defineModelMetadata(target: Object): ModelMetadata {
+	let metadata: ModelMetadata | undefined = Reflect.getOwnMetadata(ModelMetadataKey, target);
+	if(metadata) {
+		return metadata;
+	}
 
-export function getFieldLabel(target: Object, property: string): string {
-	const field = getFieldMetadata(target, property);
-	return field.label ?? property;
-}
-
-export function getModelValidationSchema(target: Object): ValidationSchema | undefined {
-	const metadata = getModelMetadata(target);
-	return metadata.schema;
-}
-
-export function setModelValidationSchema(target: Object, schema: ValidationSchema): void {
-	const metadata = getModelMetadata(target);
-	metadata.schema = schema
-}
-
-export function modelDecorator(): ClassDecorator {
-	return function(target: Object) {
-		const metadata: ModelMetadata = {
+	const parentMetadata: ModelMetadata | undefined = Reflect.getMetadata(ModelMetadataKey, target);
+	if(parentMetadata) {
+		metadata = {
+			fields: new Map<string, FieldMetadata>(parentMetadata.fields),
+			schema: parentMetadata.schema ? parentMetadata.schema.clone() : undefined
+		}
+	}
+	else {
+		metadata = {
 			fields: new Map<string, FieldMetadata>(),
 			schema: undefined
 		}
@@ -104,14 +122,36 @@ export function modelDecorator(): ClassDecorator {
 			const field = getFieldMetadata(target, property);
 			metadata.fields.set(property, field);
 		}
+	}
 
-		Reflect.defineMetadata(ModelMetadataKey, metadata, target);
+	Reflect.defineMetadata(ModelMetadataKey, metadata, target);
+	return metadata;
+}
+
+/**
+ * decorates a class as a model instance, metadata
+ * will be use when parsing and validating a model instanc
+ * @returns class decorator
+ */
+export function modelDecorator(): ClassDecorator {
+	return function(target: Object) {
+		// target is always constructor
+		defineModelMetadata(target);
 	}
 }
 
+/**
+ * decorates a class property as a model field, field metadata will be
+ * using when parsing and validating model
+ * @param metadata field metadata options
+ * @returns property decorator
+ */
 export function fieldDecorator(metadata?: FieldMetadata): PropertyDecorator {
 	return function(target: Object, property: string | Symbol) {
-		metadata = metadata ?? {};		
+		// might be class constructor or prototype
+		target = reflection.getConstructor(target);
+
+		metadata = metadata ?? {};
 		let name: string;
 
 		if(typeof property === 'symbol') {
@@ -121,10 +161,6 @@ export function fieldDecorator(metadata?: FieldMetadata): PropertyDecorator {
 			name = property as string;
 		}
 		
-		if(!metadata.label) {
-			metadata.label = capitalCase(name);
-		}
-
 		if(!metadata.key) {
 			metadata.key = name;
 		}
@@ -133,8 +169,11 @@ export function fieldDecorator(metadata?: FieldMetadata): PropertyDecorator {
 			metadata.type = 'string';
 		}
 
-		Reflect.defineMetadata(FieldMetadataKey, metadata, target);
-		reflection.addClassPropertyToList(target, name);
+		const model = defineModelMetadata(target);
+		model.fields.set(name, metadata);
+		
+		reflection.addClassProperty(target, name);		
+		Reflect.defineMetadata(FieldMetadataKey, metadata, target, name);
 	}
 }
 

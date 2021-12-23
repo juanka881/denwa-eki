@@ -13,7 +13,52 @@ export type ClassKeys<T extends Function> = keyof T['prototype'];
 /**
  * class property list metadadata key
  */
-export const ListKey = Symbol('reflection:propertyList');
+export const PropertyListKey = Symbol('reflection:propertyList');
+
+/**
+ * checks if a target value is a class constructor
+ * @param target target value to check
+ * @returns true if its a constructor
+ */
+export function isConstructor(target: Object) {
+    return target 
+		&& typeof target === 'function' 
+		&& target.prototype 
+		&& target.prototype.constructor === target;
+}
+
+/**
+ * checks if a target value is a class prototype
+ * @param target target value to check
+ * @returns true if its a prototype, otherwise false
+ */
+export function isPrototype(target: Object) {
+	return target 
+		&& typeof target === 'object' 
+		&& target.constructor 
+		&& typeof target.constructor === 'function' 
+		&& target.constructor.prototype
+		&& target.constructor.prototype === target;
+}
+
+/**
+ * inspects a value and if its a constructor returns it, 
+ * otherwise if its a prototype returns the prototype's contructor
+ * else throws error
+ * @param target target value to check
+ * @returns class constructor
+ */
+export function getConstructor(target: Object): Function {
+	if(isConstructor(target))  {
+		return target as Function;
+	}
+	else if(isPrototype(target)) {
+		return target.constructor;
+	}
+	else {
+		throw new Error(`unable to get constructor from target=${target}`);
+	}
+}
 
 /**
  * get a list of class properties 
@@ -23,9 +68,12 @@ export const ListKey = Symbol('reflection:propertyList');
  * @returns set of class properties
  */
 export function getClassPropertyList(target: Object): Set<string> {
-	let set: Set<string> | undefined = Reflect.getOwnMetadata(ListKey, target);
+	// target = constructor | prototype
+	target = getConstructor(target);
+
+	let set: Set<string> | undefined = Reflect.getOwnMetadata(PropertyListKey, target);
 	if(!set) {
-		const parentSet = Reflect.getMetadata(ListKey, target);
+		const parentSet = Reflect.getMetadata(PropertyListKey, target);
 		if(parentSet) {
 			set = new Set(parentSet);
 		}
@@ -33,7 +81,7 @@ export function getClassPropertyList(target: Object): Set<string> {
 			set = new Set();
 		}
 
-		Reflect.defineMetadata(ListKey, set, target);
+		Reflect.defineMetadata(PropertyListKey, set, target);
 	}
 
 	return set;
@@ -44,7 +92,7 @@ export function getClassPropertyList(target: Object): Set<string> {
  * @param target class type
  * @param property property name
  */
-export function addClassPropertyToList(target: Object, property: string): void {
+export function addClassProperty(target: Object, property: string): void {
 	const list = getClassPropertyList(target);
 	list.add(property);
 }

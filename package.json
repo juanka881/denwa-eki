@@ -1,6 +1,6 @@
 {
   "name": "@denwa/eki",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "express app framework",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "build": "tsc && cp -v package.json dist/src",
     "dev": "tsc -w",
     "pretest": "pnpm run build",
-    "test": "mocha dist/test/**/*.js"
+    "test": "pnpm run build && mocha dist/test/**/*.js"
   },
   "keywords": [],
   "author": "",

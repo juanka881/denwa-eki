@@ -1,8 +1,7 @@
-import { ClassKeys } from '../../utils/reflection';
-import { EachValidator, EachValidatorOptions, ValidatorBuilder, ValidatorResult, format as formatText} from '../validation';
+import { EachValidator, EachValidatorOptions, ValidatorBuilder, ValidatorResult, formatText as formatText, createError} from '../validation';
 
 export interface FormatOptions extends EachValidatorOptions {
-	format: 'email' | 'url' | 'uuid' | 'us-zipcode';
+	pattern: 'email' | 'url' | 'uuid' | 'us-zipcode';
 }
 
 // https://github.com/ajv-validator/ajv-formats/blob/4dd65447575b35d0187c6b125383366969e6267e/src/formats.ts
@@ -19,90 +18,53 @@ export class FormatValidator extends EachValidator<FormatOptions> {
 	}
 
 	validateEach(target: any, property: string, value: any): ValidatorResult {
-		let message: string = '';
+		let template: string = '';
 
-		switch(this.options.format) {
+		switch(this.options.pattern) {
 			case 'email': {
 				if(!EMAIL_FORMAT.test(value)) {
-					message = '{label} must be a email address';
+					template = '{label} must be a email address';
 				}
 				break;
 			}
 
 			case 'url': {
 				if(!URL_FORMAT.test(value)) {
-					message = '{label} must be a url address';
+					template = '{label} must be a url address';
 				}
 				break;
 			}
 
 			case 'uuid': {
 				if(UUID_FORMAT.test(value)) {
-					message = '{label} must be a UUID value';
+					template = '{label} must be a UUID value';
 				}
 				break;
 			}
 
 			case 'us-zipcode': {
 				if(US_ZIPCODE_FORMAT.test(value)) {
-					message = '{label} must be a US Zip Code';
+					template = '{label} must be a US Zip Code';
 				}
 				break;
 			}
 			
 			default: {
-				throw new Error(`invalid options.format, format=${this.options.format}`);
+				throw new Error(`invalid options.format, format=${this.options.pattern}`);
 			}
 		}
 
-		if(this.options.message) {
-			message = this.options.message
-		}
-
-		return [{
-			name: this.name,
-			property, 
-			message: formatText(message, this.options),
-			validator: this
-		}]
+		return [
+			createError(this.name, property, template, this.options)
+		];
 	}
 }
 
-export function format<T extends Function>(options: Partial<FormatOptions>): ValidatorBuilder;
-export function format<T extends Function>(format: FormatOptions['format']): ValidatorBuilder;
-export function format(...args: any[]): ValidatorBuilder {
-	return function(properties: string[]) {
-		let options: FormatOptions;
-		let invalid = false;
-
-		switch(args.length) {
-			case 1: {
-				if(typeof args[0] === 'string') {
-					options = {
-						properties,
-						format: args[0] as FormatOptions['format']
-					}
-				}
-				else if(typeof args[0] === 'object') {
-					options = args[0];
-				}
-				else {
-					invalid = true;
-				}
-				
-				break;
-			}
-	
-			default: {
-				invalid = true;
-				break;
-			}
-		}
-
-		if(invalid) {
-			throw new Error(`invalid method overload call, arguments: ${JSON.stringify(args)}`);
-		}
-	
-		return new FormatValidator(options!);
+export function format(pattern: FormatOptions['pattern']): ValidatorBuilder {
+	return function(options) {
+		return new FormatValidator({
+			...options,
+			pattern
+		});
 	}
 }

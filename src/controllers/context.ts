@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { ResolveKey, Tiny } from '@denwa/tiny';
 import { ClassType } from '../utils/reflection';
-import { getModelMetadata } from '../models/metadata';
+import { parseModel } from '../models/parsing';
 
 /**
  * context data context instance key
@@ -129,35 +129,9 @@ export class ContextInstance implements Context {
 			return model;
 		}
 
-		model = new target();
-		const metadata = getModelMetadata(target);
-
-		for(const key of metadata.fields.keys()) {
-			const field = metadata.fields.get(key);
-			if(!field) {
-				continue;
-			}
-
-			const fieldKey =  field.key ?? key;
-			const source = field.source;
-
-			if(source) {
-				(model as any)[key] = (this.request as any)[source][fieldKey];
-			}
-			else {
-				if(key in this.request.query) {
-					(model as any)[key] = this.request.query[fieldKey];
-				}
-				else if(key in this.request.params) {
-					(model as any)[key] = this.request.params[fieldKey];
-				}
-				else if(key in this.request.body) {
-					(model as any)[key] = this.request.body[fieldKey];
-				}
-			}
-		}
-
+		model = parseModel(target, this.request);
 		setData(this.request, ModelKey, model);
+		
 		return model;
 	}
 

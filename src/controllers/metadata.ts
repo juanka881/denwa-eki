@@ -62,54 +62,96 @@ export function getControllerMetadata(target: Object): ControllerMetadata {
 	return metadata;
 }
 
-export function controllerDecorator(metadata?: Partial<ControllerMetadata>): ClassDecorator {
-	let { filename, name, prefix } = metadata ?? {};
-
-	if(!filename) {
-		const callPath = reflection.getCallerPath();
-		if(!callPath) {
-			throw new Error(`unable to get controller filename`);
+export function defineControllerMetadata(target: Object, options: Partial<ControllerMetadata>): ControllerMetadata {
+	let metadata: ControllerMetadata | undefined = Reflect.getOwnMetadata(ControllerMetadataKey, target);
+	if(metadata) {
+		if(metadata.filename !== options.filename && options.filename) {
+			metadata.filename = options.filename;
 		}
 
-		filename = callPath;
+		if(metadata.name !== options.name && options.name) {
+			metadata.name = options.name;
+		}
+
+		if(metadata.prefix !== options.prefix && options.prefix) {
+			metadata.prefix = options.prefix;
+		}
+
+		return metadata;
 	}
 
-	return function(target: Object) {
+	let { name, prefix, filename } = options;
+	if(!name) {
+		name = (target as Function).name;
+
 		if(!name) {
-			name = (target as Function).name;
-
-			if(!name) {
-				throw new Error(`unable to get controller name from target.name`);
-			}
-
-			if(name.endsWith('Controller')) {
-				name = name.substring(0, name.length - 'Controller'.length);
-			}
+			throw new Error(`unable to get controller name from target.name`);
 		}
 
-		if(!prefix) {
-			prefix = paramCase(pluralize(name));
+		if(name.endsWith('Controller')) {
+			name = name.substring(0, name.length - 'Controller'.length);
 		}
+	}
 
-		const metadata: ControllerMetadata = {
+	if(!prefix) {
+		prefix = paramCase(pluralize(name));
+	}
+
+	const parentMetadata: ControllerMetadata | undefined = Reflect.getMetadata(ControllerMetadataKey, target);
+	if(parentMetadata) {
+		metadata = {
+			filename: filename!,
+			name, 
+			prefix,
+			actions: new Map<string, ActionMetadata>(parentMetadata.actions)
+		}
+	}
+	else {
+		metadata = {
 			filename: filename!,
 			name, 
 			prefix,
 			actions: new Map<string, ActionMetadata>()
 		}
-		
+
 		const properties = reflection.getClassPropertyList(target);
 		for(const property of properties) {
 			const action = Reflect.getMetadata(ActionMetadataKey, target, property);
 			metadata.actions.set(property, action);
 		}
+	}
 
-		Reflect.defineMetadata(ControllerMetadataKey, metadata, target);
+	Reflect.defineMetadata(ControllerMetadataKey, metadata, target);
+	return metadata;
+}
+
+export function controllerDecorator(options?: Partial<ControllerMetadata>): ClassDecorator {
+	options = options ?? {};
+	if(!options.filename) {
+		const callPath = reflection.getCallerPath();
+		if(!callPath) {
+			throw new Error(`unable to get controller filename`);
+		}
+
+		options.filename = callPath;
+	}
+
+	return function(target: Object) {
+		// target is always constructor
+		defineControllerMetadata(target, options!);
 	}
 }
 
 export function actionDecorator(method?: HttpMethod, path?: string): PropertyDecorator {
+	const filename = reflection.getCallerPath();
+	if(!filename) {
+		throw new Error(`unable to get controller filename`);
+	}
+
 	return function(target: Object, property: string | Symbol) {
+		// might be class constructor or prototype
+		target = reflection.getConstructor(target);
+
 		let name: string;
 
 		if(typeof property === 'symbol') {
@@ -212,8 +254,10 @@ export function actionDecorator(method?: HttpMethod, path?: string): PropertyDec
 			method,
 			path
 		}
+		const controller = defineControllerMetadata(target, { filename });
+		controller.actions.set(name, metadata);
 
+		reflection.addClassProperty(target, name);
 		Reflect.defineMetadata(ActionMetadataKey, metadata, target, name);
-		reflection.addClassPropertyToList(target, name);
 	}
 }

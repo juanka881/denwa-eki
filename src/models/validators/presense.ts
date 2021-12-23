@@ -1,4 +1,4 @@
-import { EachValidator, EachValidatorOptions, format, ValidatorBuilder, ValidatorResult } from '../validation';
+import { createError, EachValidator, EachValidatorOptions, formatText, ValidatorBuilder, ValidatorResult } from '../validation';
 
 export class PresenseValidator extends EachValidator {
 	name = 'presense';
@@ -8,20 +8,18 @@ export class PresenseValidator extends EachValidator {
 	}
 
 	validateEach(target: any, property: string, value: any): ValidatorResult {
-		if(value === null || value === undefined) {
-			const message = this.options.message ?? '{label} is required';
-			return [{
-				name: this.name,
-				property,
-				message: format(message, this.options),
-				validator: this
-			}]
+		if(!(value === null || value === undefined)) {
+			return;
 		}
+
+		return [
+			createError(this.name, property, '{label} is required', this.options)
+		];
 	}
 }
 
 export function presense(): ValidatorBuilder {
-	return function(properties: string[]) {
-		return new PresenseValidator({ properties });
+	return function(options) {
+		return new PresenseValidator(options);
 	}
 }

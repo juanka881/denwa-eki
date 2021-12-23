@@ -1,5 +1,7 @@
 import { ClassKeys } from '../utils/reflection';
-import { getModelValidationSchema, setModelValidationSchema } from './metadata';
+import { getModelMetadata } from './metadata';
+import { capitalCase } from 'change-case';
+
 /**
  * validation error object
  */
@@ -18,11 +20,6 @@ import { getModelValidationSchema, setModelValidationSchema } from './metadata';
 	 * validation error message
 	 */
 	message: string;
-
-	/**
-	 * validator that generated the error
-	 */
-	validator: Validator<any>;
 }
 
 /**
@@ -68,7 +65,15 @@ export interface Validator<TOptions extends ValidatorOptions = ValidatorOptions>
  * each validator options
  */
 export interface EachValidatorOptions extends ValidatorOptions {
+	/**
+	 * property list for the each validator
+	 */
 	properties: string[];
+
+	/**
+	 * additional validator options
+	 */
+	[key: string]: any
 }
 
 /**
@@ -104,9 +109,11 @@ export class EachValidator<TOptions extends EachValidatorOptions = EachValidator
  */
 export class ValidationErrorList {
 	private properties: Map<string | undefined, ValidationError[]>;
+	private _size: number;
 
 	constructor() {
 		this.properties = new Map<string, ValidationError[]>();
+		this._size = 0;
 	}
 
 	messages(): string[] {
@@ -139,6 +146,7 @@ export class ValidationErrorList {
 		}
 
 		list.push(error);
+		this._size = this._size + 1;
 	}
 
 	valid(property?: string): boolean {
@@ -148,12 +156,11 @@ export class ValidationErrorList {
 
 	clear() {
 		this.properties.clear();
+		this._size = 0;
 	}
 
 	get size(): number {
-		return [...this.properties.values()]
-			.map(x => x.length)
-			.reduce((total, value) => total + value);
+		return this._size;
 	}
 }
 
@@ -162,74 +169,53 @@ export class ValidationErrorList {
  * map validators to list of class properties
  */
 export class ValidationSchema {
-	private properties: Map<string | undefined, Validator[]>;
+	private validators: Validator[];
 
 	constructor() {
-		this.properties = new Map<string, Validator[]>();
+		this.validators = [];
 	}
 
 	clear() {
-		this.properties.clear();
+		this.validators = [];
 	}
 
-	add(validator: Validator): void;
-	add(property: string, validator: Validator): void;
-	add(...args: any[]): any {
-		let property: string | undefined;
-		let validator: Validator;
-
-		switch(args.length) {
-			case 1: {
-				property = undefined;
-				validator = args[0];
-				break;
-			}
-
-			case 2: {
-				property = args[0];
-				validator = args[1];
-				break;
-			}
-
-			default: {
-				throw new Error(`invalid method overload call, arguments: ${JSON.stringify(args)}`);
-			}
-		}
-
-		let list = this.properties.get(property);
-		if(!list) {
-			list = [];
-			this.properties.set(property, list);
-		}
-
-		list.push(validator);
+	add(validator: Validator): void {
+		this.validators.push(validator);
 	}
-
+	
 	validate(target: any): ValidatorResult {
 		let result: ValidatorResult;
 
-		for(const property of this.properties.keys()) {
-			const validators = this.properties.get(property);
-			if(!validators || validators.length === 0) {
-				continue;
-			}
-
-			for(const validator of validators) {
-				const errors = validator.validate(target);
-				if(errors && errors.length > 0) {
-					result = result ? result.concat(errors) : errors;
-				}
+		for(const validator of this.validators) {
+			const errors = validator.validate(target);
+			if(errors && errors.length > 0) {
+				result = result ? result.concat(errors) : errors;
 			}
 		}
 
 		return result;
+	}
+
+	clone(): ValidationSchema {
+		const copy = new ValidationSchema();
+		copy.validators = [...this.validators];
+		
+		return copy;
+	}
+
+	get size(): number {
+		return this.validators.length;
+	}
+
+	getValidators(): Validator[] {
+		return [...this.validators];
 	}
 }
 
 /**
  * validator builder type
  */
-export type ValidatorBuilder = (properties: string[]) => Validator;
+export type ValidatorBuilder = (options: EachValidatorOptions) => Validator;
 
 /**
  * validate builder callback, takes a list
@@ -237,24 +223,49 @@ export type ValidatorBuilder = (properties: string[]) => Validator;
 export type ValidateBuilder<T extends Function> = (properties: ClassKeys<T> | ClassKeys<T>[], builder: ValidatorBuilder) => void;
 
 /**
+ * validate builder options to override label or message
+ */
+export interface ValidateOverrideOptions {
+	/**
+	 * label overrides
+	 */
+	label?: string
+
+	/**
+	  * message overrides
+	  */
+	message?: string
+}
+
+/**
  * validation builder, takes a callback that uses the validate
  * function to register validation for class properties
  * @param target class type
  * @param builder validate builder 
  */
-export function validation<T extends Function>(target: T, builder: (validate: ValidateBuilder<T>) => void): void {
-	let schema = getModelValidationSchema(target);
+export function validation<T extends Function>(target: T, builder: (validate: ValidateBuilder<T>) => void, overrides?: ValidateOverrideOptions): void {
+	// set schema
+	const metadata = getModelMetadata(target);
+	let schema: ValidationSchema | undefined = metadata.schema;
 	if(!schema) {
 		schema = new ValidationSchema();
-		setModelValidationSchema(target, schema);
+		metadata.schema = schema;
 	}
 
+	// return validate fn to build schema
 	function validate<T extends Function>(properties: ClassKeys<T> | ClassKeys<T>[], builder: ValidatorBuilder): void {
 		if(!Array.isArray(properties)) {
 			properties = [properties]
 		}
 
-		const validator = builder(properties as string[]);
+		// build labels
+		const options: EachValidatorOptions = {
+			label: overrides?.label,
+			message: overrides?.message,
+			properties: properties as string[]
+		}
+
+		const validator = builder(options);		
 		schema!.add(validator);
 	}
 
@@ -262,16 +273,20 @@ export function validation<T extends Function>(target: T, builder: (validate: Va
 }
 
 export const TOKEN_FORMAT = /\{([0-9a-zA-Z_]+)\}/g;
-export function format(template: string, options: { [key: string]: any }): string {
-	function replace(match: string, p1: string, offset: number) {
+export function formatText(template: string, label: string, options: { [key: string]: any }): string {
+	function replace(match: string, propertyName: string, offset: number) {
         let result = '';
 
         if (template[offset - 1] === '{' &&
             template[offset + match.length] === '}') {
-            return p1
+            return propertyName
         } 
 		else {
-            result = options && options.hasOwnProperty(p1) ? options[p1] : null
+			if(propertyName === 'label') {
+				return label;
+			}
+
+            result = options && options.hasOwnProperty(propertyName) ? options[propertyName] : null
             if (result === null || result === undefined) {
                 return ''
             }
@@ -286,4 +301,15 @@ export function format(template: string, options: { [key: string]: any }): strin
 
 	const text = template.replace(TOKEN_FORMAT, replace);
 	return text;
+}
+
+export function createError(name: string, property: string, template: string, options: EachValidatorOptions): ValidationError {
+	const label = options.label ?? capitalCase(property);
+	const message = options.message ?? formatText(template, label, options);
+
+	return {
+		name,
+		property,
+		message
+	}
 }
