@@ -242,7 +242,7 @@ export type ValidatorBuilder = (options: EachValidatorOptions) => Validator;
 /**
  * validate builder callback, takes a list
  */
-export type ValidateBuilder<T extends Function> = (properties: ClassKeys<T> | ClassKeys<T>[], builder: ValidatorBuilder) => void;
+export type ValidateBuilder<T extends Function> = (properties: ClassKeys<T> | ClassKeys<T>[], builder: ValidatorBuilder, overrides?: ValidateOverrideOptions) => void;
 
 /**
  * validate builder options to override label or message
@@ -275,9 +275,9 @@ export interface ValidateOverrideOptions {
  * validation builder, takes a callback that uses the validate
  * function to register validation for class properties
  * @param target class type
- * @param builder validate builder 
+ * @param validationBuilder validate builder 
  */
-export function validation<T extends Function>(target: T, builder: (validate: ValidateBuilder<T>) => void, overrides?: ValidateOverrideOptions): void {
+export function validation<T extends Function>(target: T, validationBuilder: (validate: ValidateBuilder<T>) => void): void {
 	// set schema
 	const metadata = getModelMetadata(target);
 	let schema: ValidationSchema | undefined = metadata.schema;
@@ -287,7 +287,7 @@ export function validation<T extends Function>(target: T, builder: (validate: Va
 	}
 
 	// return validate fn to build schema
-	function validate<T extends Function>(properties: ClassKeys<T> | ClassKeys<T>[], builder: ValidatorBuilder): void {
+	function validate<T extends Function>(properties: ClassKeys<T> | ClassKeys<T>[], validatorBuilder: ValidatorBuilder, overrides?: ValidateOverrideOptions): void {
 		if(!Array.isArray(properties)) {
 			properties = [properties]
 		}
@@ -298,11 +298,11 @@ export function validation<T extends Function>(target: T, builder: (validate: Va
 			properties: properties as string[]
 		}
 
-		const validator = builder(options);		
+		const validator = validatorBuilder(options);
 		schema!.add(validator);
 	}
 
-	builder(validate);
+	validationBuilder(validate);
 }
 
 export const TOKEN_PATTERN = /\{([0-9a-zA-Z_]+)\}/g;
