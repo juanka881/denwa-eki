@@ -86,7 +86,7 @@ export interface ValidationBuilder<TKeys> {
  * @param modelType class type
  * @param callback callback that registers validation for the model
  */
-export function validation<T extends Function>(modelType: T, callback: (builder: ValidationBuilder<ClassKeys<T> & '*'>) => void): void {
+export function validation<T extends Function>(modelType: T, callback: (builder: ValidationBuilder<ClassKeys<T> | '*'>) => void): void {
 	// set schema
 	const metadata = getModelMetadata(modelType);
 	if(!metadata.validation) {
@@ -94,7 +94,7 @@ export function validation<T extends Function>(modelType: T, callback: (builder:
 	}
 
 	const validation = metadata.validation;
-	const validationBuilder: ValidationBuilder<ClassKeys<T> & '*'> = {
+	const validationBuilder: ValidationBuilder<ClassKeys<T> | '*'> = {
 		do(property, builder) {
 			if(property === '*') {
 				for(const property of metadata.properties.keys()) {

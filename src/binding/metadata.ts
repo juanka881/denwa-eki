@@ -15,7 +15,7 @@ export interface BindingMetadata {
 	/**
 	 * field type
 	 */
-	type: 'string' | 'number' | 'bool' | 'date';
+	type: 'string' | 'number' | 'int' | 'bool' | 'date';
 
 	/**
 	 * field label
