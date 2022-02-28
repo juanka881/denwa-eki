@@ -1,3 +1,3 @@
-export * from './models';
+export * from './binding';
 export * from './views';
 export * from './controllers';

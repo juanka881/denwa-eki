@@ -66,7 +66,10 @@ export function setContextInstance(tiny?: Tiny): RequestHandler {
 export function setControllerRoute(route: RouteConfig): RequestHandler {
 	return function(request: Request, response: Response, next: NextFunction) {
 		const context = getContext(request);
-		const controllerInstance = context.resolve(route.controller);
+		const controllerInstance = context.resolve(route.controllerType);
+		if(!controllerInstance) {
+			throw new Error(`unabl to get controller instance, context.resolve(route.controller) return undefined`);
+		}
 
 		setData(request, RouteKey, route);
 		setData(request, ControllerInstanceKey, controllerInstance);

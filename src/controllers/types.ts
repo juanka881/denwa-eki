@@ -17,7 +17,7 @@ export interface RouteConfig {
 	/**
 	 * controller clas
 	 */
-	controller: ClassType;
+	controllerType: ClassType;
 
 	/**
 	 * controller name

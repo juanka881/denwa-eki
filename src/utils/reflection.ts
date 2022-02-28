@@ -55,6 +55,9 @@ export function getConstructor(target: Object): Function {
 	else if(isPrototype(target)) {
 		return target.constructor;
 	}
+	else if(target && target.constructor) {
+		return target.constructor;
+	}
 	else {
 		throw new Error(`unable to get constructor from target=${target}`);
 	}

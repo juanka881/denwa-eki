@@ -81,12 +81,12 @@ export function registerResource(router: IRouter, log: Log, target: ClassType, o
 			routePath = routePath.substring(1);
 		}
 
-		if(routePath.endsWith('/')) {
+		if(routePath.endsWith('/') && routePath !== '/') {
 			routePath = routePath.substring(0, routePath.length - 1);
 		}
 
 		const config: RouteConfig = {
-			controller: target,
+			controllerType: target,
 			name: controller.name,
 			action: action.name,
 			filename: controller.filename,

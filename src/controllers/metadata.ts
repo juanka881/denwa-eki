@@ -6,12 +6,12 @@ import { HttpMethod } from './types';
 /**
  * controller metadata reflection key
  */
-export const ControllerMetadataKey = Symbol('ControllerMetadataKey');
+export const ControllerMetadataKey = Symbol('eki:controllerMetadata');
 
 /**
  * action metadata reflection key
  */
-export const ActionMetadataKey = Symbol('ActionMetadataKey');
+export const ActionMetadataKey = Symbol('eki:actionMetadata');
 
 /**
  * controller action metadata

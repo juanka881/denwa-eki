@@ -1,27 +1,26 @@
 import 'reflect-metadata';
 import * as reflection from '../utils/reflection';
 import { capitalCase } from 'change-case';
-import { ValidationSchema } from './validation';
+import { Validation } from './validation';
 
 /**
- * model fields metadata
+ * model binding metadata
  */
-export interface FieldMetadata {
+export interface BindingMetadata {
 	/**
-	 * field key on the source object to read model from
+	 * property name
 	 */
-	key?: string;
-
-	/**
-	 * field source on source object to read model from 
-	 * defaults to query, params, and body
-	 */
-	source?: 'body' | 'query' | 'params' | string;
+	property: string;
 
 	/**
 	 * field type
 	 */
-	type?: 'string' | 'number' | 'bool' | 'date';
+	type: 'string' | 'number' | 'bool' | 'date';
+
+	/**
+	 * field label
+	 */
+	label: string;
 }
 
 /**
@@ -29,25 +28,25 @@ export interface FieldMetadata {
  */
 export interface ModelMetadata {
 	/**
-	 * model fields
+	 * model property bindings
 	 */
-	fields: Map<string, FieldMetadata>;
+	properties: Map<string, BindingMetadata>;
 
 	/**
-	 * model schema
+	 * model validation
 	 */
-	 schema?: ValidationSchema;
+	validation?: Validation;
 }
 
 /**
  * model metadata reflection key
  */
-export const ModelMetadataKey = Symbol('ModelMetadataKey');
+export const ModelMetadataKey = Symbol('eki:modelMetadata');
 
 /**
- * field metadata reflection key
+ * bind metadata reflection key
  */
-export const FieldMetadataKey = Symbol('FieldMetadataKey');
+export const BindingMetadataKey = Symbol('eki:BindMetadata');
 
 /**
  * checks if the given target type has metadata
@@ -82,14 +81,19 @@ export function getModelMetadata(target: Object): ModelMetadata {
  * @param property property name
  * @returns mode's field metadata object
  */
-export function getFieldMetadata(target: Object, property: string): FieldMetadata {
+export function getBindMetadata(target: Object, property: string): BindingMetadata {
 	target = reflection.getConstructor(target);
-	const metadata = Reflect.getMetadata(FieldMetadataKey, target, property);
+	const metadata = Reflect.getMetadata(BindingMetadataKey, target, property);
 	if(!metadata) {
-		throw new Error(`class=${target} property=${property} requires @field decorator`);
+		throw new Error(`class=${target} property=${property} requires @bind decorator`);
 	}
 
 	return metadata;
+}
+
+export function getBindingLabel(target: Object, property: string): string {
+	const metadata = getBindMetadata(target, property);
+	return metadata.label;
 }
 
 /**
@@ -107,20 +111,20 @@ export function defineModelMetadata(target: Object): ModelMetadata {
 	const parentMetadata: ModelMetadata | undefined = Reflect.getMetadata(ModelMetadataKey, target);
 	if(parentMetadata) {
 		metadata = {
-			fields: new Map<string, FieldMetadata>(parentMetadata.fields),
-			schema: parentMetadata.schema ? parentMetadata.schema.clone() : undefined
+			properties: new Map<string, BindingMetadata>(parentMetadata.properties),
+			validation: parentMetadata.validation ? parentMetadata.validation.clone() : undefined
 		}
 	}
 	else {
 		metadata = {
-			fields: new Map<string, FieldMetadata>(),
-			schema: undefined
+			properties: new Map<string, BindingMetadata>(),
+			validation: undefined
 		}
 
 		const properties = reflection.getClassPropertyList(target);
 		for(const property of properties) {
-			const field = getFieldMetadata(target, property);
-			metadata.fields.set(property, field);
+			const binding = getBindMetadata(target, property);
+			metadata.properties.set(property, binding);
 		}
 	}
 
@@ -141,39 +145,35 @@ export function modelDecorator(): ClassDecorator {
 }
 
 /**
- * decorates a class property as a model field, field metadata will be
- * using when parsing and validating model
+ * decorates a class property as a model property binding, binding metadata will be
+ * using when parsing model from request
  * @param metadata field metadata options
  * @returns property decorator
  */
-export function fieldDecorator(metadata?: FieldMetadata): PropertyDecorator {
+export function bindDecorator(type: BindingMetadata['type']): PropertyDecorator {
 	return function(target: Object, property: string | Symbol) {
 		// might be class constructor or prototype
 		target = reflection.getConstructor(target);
 
-		metadata = metadata ?? {};
-		let name: string;
-
+		let propertyName: string;
 		if(typeof property === 'symbol') {
-			name = property.description ?? '';
+			propertyName = property.description ?? '';
 		}
 		else {
-			name = property as string;
+			propertyName = property as string;
 		}
 		
-		if(!metadata.key) {
-			metadata.key = name;
-		}
-
-		if(!metadata.type) {
-			metadata.type = 'string';
-		}
+		const metadata: BindingMetadata = {
+			property: propertyName,
+			type: type,
+			label: capitalCase(propertyName)
+		};
 
 		const model = defineModelMetadata(target);
-		model.fields.set(name, metadata);
+		model.properties.set(propertyName, metadata);
 		
-		reflection.addClassProperty(target, name);		
-		Reflect.defineMetadata(FieldMetadataKey, metadata, target, name);
+		reflection.addClassProperty(target, propertyName);
+		Reflect.defineMetadata(BindingMetadataKey, metadata, target, propertyName);
 	}
 }
 
