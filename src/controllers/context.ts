@@ -130,7 +130,7 @@ export class ContextInstance implements Context {
 		}
 
 		model = new target();
-		bindModel(target, this.request);
+		bindModel(model, this.request);
 		setData(this.request, ModelKey, model);
 		
 		return model;
