@@ -25,7 +25,7 @@ export class FormatValidator implements Validator {
 		const label = getBindingLabel(model, this.property);
 		const value = model[this.property];
 
-		if(value === null || value === undefined) {
+		if(value === null || value === undefined || value === '') {
 			return;
 		}
 

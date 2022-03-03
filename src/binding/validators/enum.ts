@@ -14,7 +14,7 @@ export class EnumValidator implements Validator {
 	validate(model: any, errors: ModelErrorList): void {
 		const value = model[this.property];
 
-		if(value === null || value === undefined) {
+		if(value === null || value === undefined || value === '') {
 			return;
 		}
 

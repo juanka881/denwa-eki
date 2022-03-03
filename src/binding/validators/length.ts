@@ -8,6 +8,7 @@ export interface LengthValidatorOptions {
 	range?: [number, number];
 	is?: number;
 	message?: string;
+	allowBlank?: boolean;
 }
 
 export class LengthValidator implements Validator {
@@ -22,7 +23,7 @@ export class LengthValidator implements Validator {
 	validate(model: any, errors: ModelErrorList): void {
 		const value = model[this.property];
 
-		if(value === null || value === undefined) {
+		if(value === null || value === undefined || value === '')  {
 			return;
 		}
 
