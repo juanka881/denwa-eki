@@ -5,8 +5,7 @@ export { describe, it, Suite } from 'mocha';
 
 export function ts(fn: (this: Suite) => void): Suite
 export function ts(unit: string, fn: (this: Suite) => void) : Suite
-export function ts(...args: any[]): Suite
-{
+export function ts(...args: any[]): Suite {
 	let fn: (this: Suite) => void | undefined;
 	let unit: string | undefined;
 
