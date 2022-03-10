@@ -1,57 +1,42 @@
-import { ClassType } from '../utils/reflection';
+import { ActionInfo, ControllerInfo } from './metadata';
 
 /**
  * controller http methods
  */
 export type HttpMethod = 'get' | 'post' | 'delete' | 'patch' | 'put' | 'head' | 'options';
 
- /**
-  * controller resource assignment only limit type
-  */
-export type OnlyOptions = 'index' | 'show' | 'create' | 'edit' | 'delete' | string;
-
 /**
  * route config information
  */
-export interface RouteConfig {
+export interface RouteInfo {
 	/**
-	 * controller clas
+	 * controller info
 	 */
-	controllerType: ClassType;
+	controller: ControllerInfo;
 
 	/**
-	 * controller name
+	 * action info
 	 */
-	name: string;
+	action: ActionInfo;
 
 	/**
-	 * action name
+	 * controller instance
 	 */
-	action: string;
+	instance?: Object;
 
 	/**
-	 * controller filename
-	 */
-	filename: string;
-
-	/**
-	 * http method
-	 */
-	method: HttpMethod;
-
-	/**
-	 * controller prefix
-	 */
-	prefix: string;
-
-	/**
-	 * route path
-	 */
-	path: string;
-
-	/**
-	 * full route string, as registered
+	 * route full path as registered
 	 * in express
 	 */
-	route: string;	
+	path: string;
+}
+
+/**
+ * action result
+ */
+export interface ActionResult {
+	/**
+	 * result type
+	 */
+	type: string;
 }

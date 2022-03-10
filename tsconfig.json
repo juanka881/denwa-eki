@@ -15,7 +15,8 @@
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
 		"rootDir": "./",
-		"outDir": "./dist"
+		"outDir": "./dist",
+		"jsx": "react-jsx"
 	},
 	"exclude": [
 		"node_modules",

@@ -1,4 +1,123 @@
-import * as metadata from './metadata';
+import { capitalCase } from 'change-case';
+import { Constructor } from '../utils/reflection';
+import { mergeModelInfo, setModelInfo, tryGetModelInfo } from './metadata';
+import { validateModel, Validator } from './validation';
+import { required } from './validators/required';
+
+/**
+ * model property types
+ */
+export type PropertyType = 'int' | 'number' | 'string' | 'bool' | 'date' | 'array' | 'object' | Constructor;
+
+/**
+ * model property information
+ */
+export interface PropertyInfo {
+	type: PropertyType;
+	name: string;
+	require: boolean;
+	label: string;
+	rules: Validator[];
+}
+
+/**
+ * model information
+ */
+export interface ModelInfo {
+	name: string;
+	constructor: Constructor;
+	properties: Map<string, PropertyInfo>;
+}
+
+/**
+ * model property info options
+ */
+export interface PropertyOptions {
+	type: PropertyType;
+	require?: boolean;
+	label?: string;
+	rules?: Validator | Validator[];
+}
+
+/**
+ * model info options
+ */
+export interface ModelOptions<T> {
+	properties: {
+		[key in keyof T]?: PropertyType | PropertyOptions
+	}
+}
+
+/**
+ * sets a models information 
+ * @param constructor model class constructor
+ * @param options model information options
+ */
+export function model<T>(constructor: Constructor<T>, options: ModelOptions<T>) {
+	const existing = tryGetModelInfo(constructor);
+	if(existing) {
+		throw new Error(`attempted to call model() multiple times on the same class=${constructor}`);
+	}
+
+	// crate starting model info object
+	const modelInfo: ModelInfo = {
+		constructor,
+		name: constructor.name,
+		properties: new Map<string, PropertyInfo>()
+	}
+
+	// merge parent properties if any
+	mergeModelInfo(constructor, modelInfo);
+
+	// build property info from current properties options
+	for(const key of Object.keys(options.properties)) {
+		let property: PropertyType | PropertyOptions = (options.properties as any)[key];
+		let propertyInfo: PropertyInfo;
+
+		if(typeof property === 'string') {
+			propertyInfo = {
+				type: property,
+				label: capitalCase(key),
+				name: key,
+				require: false,
+				rules: []
+			}
+		}
+		else if(typeof property === 'object') {
+			let rules: Validator[];
+			if(property.rules) {
+				if(Array.isArray(property.rules)) {
+					rules = property.rules;
+				}
+				else {
+					rules = [property.rules];
+				}
+			}
+			else {
+				rules = [];
+			}
+
+			if(property.require) {
+				rules = [required(), ...rules];
+			}
+
+			propertyInfo = {
+				type: property.type,
+				label: property.label ?? capitalCase(key),
+				name: key,
+				require: property.require ?? false,
+				rules
+			};
+		}
+		else {
+			throw new Error(`invalid property=${JSON.stringify(property)}`);
+		}
+
+		modelInfo.properties.set(key, propertyInfo);
+	}
+
+	setModelInfo(constructor, modelInfo);
+}
 
 /**
  * model error
@@ -123,7 +242,6 @@ export class ModelErrorList {
 	}
 }
 
-@metadata.modelDecorator()
 export class Model {
 	readonly errors: ModelErrorList;
 	private validated: boolean;
@@ -142,12 +260,8 @@ export class Model {
 		this.validated = false;
 		this.errors.clear();
 
-		const modelMetadata = metadata.getModelMetadata(this.constructor);
-		if(modelMetadata.validation) {
-			const errors = new ModelErrorList();
-			modelMetadata.validation.validate(this, errors);
-			this.errors.merge(errors);
-		}
+		const errors = validateModel(this);
+		this.errors.merge(errors);
 		
 		this.validated = true;
 		return this.errors.count === 0;

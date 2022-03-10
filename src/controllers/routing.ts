@@ -1,39 +1,26 @@
 import { Log } from '@denwa/log';
 import { IRouter } from 'express';
 import urlJoin from 'url-join';
-import { ClassType } from '../utils/reflection';
-import { getControllerMetadata } from './metadata';
-import { clearController, executeAction, handleResult, setControllerRoute } from './middleware';
-import { OnlyOptions, RouteConfig } from './types';
+import { Constructor } from '../utils/reflection';
+import { getControllerInfo } from './metadata';
+import { executeAction, handleResult, setControllerRoute } from './middleware';
+import { RouteInfo } from './types';
 
 /**
- * resource options
+ * route builder
  */
-export interface ResourceOptions {
-	/**
-	 * resource prefix
-	 */
-	prefix?: string;
-
-	/**
-	 * resource action limit list
-	 */
-	only?: OnlyOptions[];
-}
-
-/**
- * resource builder
- */
-export interface ResourceBuilder {
+export interface RouteBuilder {
 	/**
 	 * router instance
 	 */
 	router: IRouter;
 
+
 	/**
-	 * register funciton
+	 * register controller in routes
+	 * @param type controller class contructor
 	 */
-	(type: ClassType, options?: ResourceOptions): void;
+	controller(type: Constructor): void;
 }
 
 /**
@@ -42,73 +29,68 @@ export interface ResourceBuilder {
  * @param log logger
  * @returns resource builder
  */
-export function createResourceBuilder(router: IRouter, log: Log): ResourceBuilder {
-	const builder: ResourceBuilder = function(type: ClassType, options?: ResourceOptions) {
-		registerResource(router, log, type, options);
+export function createRouteBuilder(router: IRouter, log: Log): RouteBuilder {
+	const builder: RouteBuilder = {
+		router,
+		controller(type) {
+			registerController(router, log, type);
+		}
 	}
-	builder.router = router;
 
 	return builder;
 }
 
 /**
- * register resource 
+ * gets the route path for using a prefix and action path
+ * @param prefix prefix path
+ * @param action action path
+ * @returns relative url string with route path
+ */
+export function getRoutePath(prefix: string, action: string): string {
+	let path = urlJoin('/', prefix, action);
+	if(path.startsWith('//')) {
+		path = path.substring(1);
+	}
+
+	if(path.endsWith('/') && path !== '/') {
+		path = path.substring(0, path.length - 1);
+	}
+
+	return path;
+}
+
+/**
+ * register controller routes 
  * @param router router instance
  * @param log log instance
- * @param target target class type
+ * @param type target class type
  * @param options resource options
  */
-export function registerResource(router: IRouter, log: Log, target: ClassType, options?: ResourceOptions): void {
-	const controller = getControllerMetadata(target);
-	let { prefix, only = [] } = options ?? {};
-
+export function registerController(router: IRouter, log: Log, type: Constructor): void {
+	const controller = getControllerInfo(type);
+	
 	for(const key of controller.actions.keys()) {
-		if(only && only.includes(key)) {
-			continue;
+		const action = controller.actions.get(key)!;
+		const prefix = controller.prefix;
+		const path = getRoutePath(prefix, action.path);
+		const route: RouteInfo = {
+			controller,
+			action,
+			path
 		}
 
-		const action = controller.actions.get(key);
-		if(!action) {
-			throw new Error(`unable to get action metadata from controller.actions, cotnroller=${target} action=${key}`);
-		}
-
-		if(!prefix) {
-			prefix = controller.prefix;
-		}
-
-		let routePath = urlJoin('/', prefix, action.path);
-		if(routePath.startsWith('//')) {
-			routePath = routePath.substring(1);
-		}
-
-		if(routePath.endsWith('/') && routePath !== '/') {
-			routePath = routePath.substring(0, routePath.length - 1);
-		}
-
-		const config: RouteConfig = {
-			controllerType: target,
-			name: controller.name,
-			action: action.name,
-			filename: controller.filename,
-			method: action.method,
-			prefix,
-			path: action.path,
-			route: routePath
-		}
-
-		log.debug(`register route: ${target.name}#${config.name} ${config.method} ${config.route}`, {
-			controller: target.name,
-			action: config.action,
-			method: config.method,
-			route: config.route
+		log.debug(`register route: ${type.name}#${action.name} -> ${route.action.method} ${route.path}`, {
+			controller: type.name,
+			action: route.action.name,
+			method: route.action.method,
+			path: route.path
 		});
 
-		router[config.method](
-			config.route, 
-			setControllerRoute(config),
+		router[route.action.method](
+			route.path, 
+			setControllerRoute(route),
 			executeAction, 
-			handleResult, 
-			clearController
+			handleResult
 		);
 	}
 }

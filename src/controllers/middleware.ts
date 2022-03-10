@@ -1,8 +1,8 @@
 import { Tiny } from '@denwa/tiny';
-import { Request, Response, NextFunction, RequestHandler, IRouter } from 'express';
-import { Context, ContextInstance, ContextKey, deleteData, getContext, getData, setData } from './context';
-import { RouteConfig } from './types';
-import * as results from './results';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { Context, ContextInstance, ContextKey, getContext, getData, setData } from './context';
+import { RouteInfo } from './types';
+import * as handlers from './handlers';
 
 /**
  * context data tiny instance key
@@ -12,7 +12,7 @@ export const TinyKey = 'tiny';
 /**
  * controller route key
  */
-export const RouteKey = 'eki:route';
+export const RouteInfoKey = 'eki:routeInfo';
 
 /**
  * controller instance key
@@ -42,15 +42,14 @@ export function wrap(handler: (request: Request, response: Response, next: NextF
  * @param tiny tiny instance to use, optional
  * @returns express middleware handler
  */
-export function setContextInstance(tiny?: Tiny): RequestHandler {
+export function setRequestContext(tiny?: Tiny): RequestHandler {
 	return function(request: Request, response: Response, next: NextFunction) {
 		if(!tiny) {
 			tiny = request.app.get(TinyKey);
 			if(!tiny) {
-				throw new Error(`unable to get key=${tiny} from request.app.get()`);
+				throw new Error(`unable to get tiny from request.app.get(${TinyKey}), and no tiny instance was passed to setContextInstance() middleware`);
 			}
 		}
-
 		const context: Context = new ContextInstance(request, response, next, tiny);
 		setData(request, ContextKey, context);
 		
@@ -63,31 +62,20 @@ export function setContextInstance(tiny?: Tiny): RequestHandler {
  * @param route route config
  * @returns express middleware handler
  */
-export function setControllerRoute(route: RouteConfig): RequestHandler {
+export function setControllerRoute(route: RouteInfo): RequestHandler {
 	return function(request: Request, response: Response, next: NextFunction) {
 		const context = getContext(request);
-		const controllerInstance = context.resolve(route.controllerType);
-		if(!controllerInstance) {
-			throw new Error(`unabl to get controller instance, context.resolve(route.controller) return undefined`);
+		const instance = context.resolve(route.controller.constructor);
+		if(!instance) {
+			throw new Error(`unable to get controller instance, context.resolve(route.controller.constructor) return undefined`);
 		}
 
-		setData(request, RouteKey, route);
-		setData(request, ControllerInstanceKey, controllerInstance);
+		route.instance = instance;
+		setData(request, RouteInfoKey, route);
+		setData(request, ControllerInstanceKey, instance);
 		
 		next();
 	}
-}
-
-/**
- * clears controller values from request
- * @param request express request
- * @param response express response
- * @param next express next fucntion
- */
-export function clearController(request: Request, response: Response, next: NextFunction): void {
-	deleteData(request, RouteKey);
-	deleteData(request, ControllerInstanceKey);
-	next();
 }
 
 /**
@@ -99,18 +87,17 @@ export function clearController(request: Request, response: Response, next: Next
 export async function executeAction(request: Request, response: Response, next: NextFunction): Promise<any> {
 	try {
 		const context = getContext(request);
-		const controller: any = getData(request, ControllerInstanceKey);
-		if(!controller) {
+		const instance: any = getData(request, ControllerInstanceKey);
+		if(!instance) {
 			throw new Error(`unable to find controller instance in request.data, key=${ControllerInstanceKey}`);
 		}
 
-		const route: RouteConfig = getData(request, RouteKey);
+		const route: RouteInfo = getData(request, RouteInfoKey);
 		if(!route) {
-			throw new Error(`unable to find controller route in request.data, key=${RouteKey}`);
+			throw new Error(`unable to find controller route info in request.data, key=${RouteInfoKey}`);
 		}
 
-		const action = route.action;
-		const result = await controller[action](context);
+		const result = await instance[route.action.name](context);
 		setData(request, ActionResultKey, result);
 		next();
 	}
@@ -128,28 +115,49 @@ export async function executeAction(request: Request, response: Response, next: 
  * @returns 
  */
 export async function handleResult(request: Request, response: Response, next: NextFunction): Promise<any> {
-	const result = getData(request, ActionResultKey);
-	if(!result) {
+	let results = getData(request, ActionResultKey);
+	if(!results) {
 		return next();
 	}
 
+	if(!Array.isArray(results)) {
+		results = [results];
+	}
+
 	const context = getContext(request);
-
-	try {
-		switch(result.type) {
-			case 'view': {
-				return await results.viewHandler(result, context);
+	for(const result of results) {
+		try {
+			if(typeof result === 'number') {
+				context.response.status(result);
 			}
-
-			case 'redirect': {
-				return await results.redirectHandler(result, context);
+			else if(typeof result === 'object' && 'type' in result) {
+				switch(result.type) {
+					case 'view': {
+						await handlers.viewHandler(result, context);
+						break;
+					}
+		
+					case 'redirect': {
+						await handlers.redirectHandler(result, context);
+						break;
+					}
+				}
 			}
-
-			default:
-				return next();
+			else if(result === undefined || result === null) {
+				continue;
+			}
+			else {
+				throw new Error(`invalid result, result=${JSON.stringify(result)}`);
+			}
+		}
+		catch(error) {
+			return next(error);
 		}
 	}
-	catch(error) {
-		next(error)
+
+	if(!context.response.statusCode) {
+		context.response.status(200);
 	}
+
+	next();
 }

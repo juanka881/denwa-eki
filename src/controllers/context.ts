@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { ResolveKey, Tiny } from '@denwa/tiny';
-import { ClassType } from '../utils/reflection';
-import { bindModel } from '../binding/binding';
+import { Constructor } from '../utils/reflection';
+import { bindRequest } from '../models/binding';
 
 /**
  * context data context instance key
@@ -37,7 +37,7 @@ export interface Context {
 	 * using the given class type
 	 * @param type class type
 	 */
-	bindModel<T>(type: ClassType<T>): T;
+	bind<T>(type: Constructor<T>): T;
 
 	/**
 	 * helper function to resolve a value from the container
@@ -123,14 +123,14 @@ export class ContextInstance implements Context {
 		this.tiny = tiny;
 	}
 
-	bindModel<T>(target: ClassType<T>): T {
+	bind<T>(type: Constructor<T>): T {
 		let model: T = getData(this.request, ModelKey);
 		if(model)  {
 			return model;
 		}
 
-		model = new target();
-		bindModel(model, this.request);
+		model = new type();
+		bindRequest(model, this.request);
 		setData(this.request, ModelKey, model);
 		
 		return model;

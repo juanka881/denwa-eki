@@ -1,6 +1,6 @@
 export * from './context';
-export { TinyKey } from './middleware';
+export { TinyKey, setRequestContext } from './middleware';
 export * from './routing';
-export { controllerDecorator as controller } from './metadata';
-export { actionDecorator as action } from './metadata';
-export { view, redirect, ActionResult } from './results';
+export { controller } from './metadata';
+export { action } from './metadata';
+export { view, redirect } from './handlers';

@@ -1,31 +1,47 @@
-import * as reflection from '../utils/reflection';
+import { getConstructor, Constructor } from '../utils/reflection';
 import { paramCase } from 'change-case';
 import pluralize from 'pluralize';
 import { HttpMethod } from './types';
 
 /**
- * controller metadata reflection key
+ * controller info reflection key
  */
-export const ControllerMetadataKey = Symbol('eki:controllerMetadata');
+export const ControllerInfoKey = Symbol('eki:controllerInfo');
 
 /**
  * action metadata reflection key
  */
-export const ActionMetadataKey = Symbol('eki:actionMetadata');
+export const ActionInfoKey = Symbol('eki:actionInfo');
 
 /**
- * controller action metadata
+ * controller action info
  */
-export interface ActionMetadata {
+export interface ActionInfo {
+	/**
+	 * action function name
+	 */
 	name: string;
+
+	/**
+	 * action http method
+	 */
 	method: HttpMethod;
+
+	/**
+	 * action path, relative to controller's prefix
+	 */
 	path: string;
 }
 
 /**
- * controller metadata object
+ * controller info
  */
-export interface ControllerMetadata {
+export interface ControllerInfo {
+	/**
+	 * controller class constructor 
+	 */
+	constructor: Constructor;
+
 	/**
 	 * controlle name, use for debuging
 	 */
@@ -39,136 +55,163 @@ export interface ControllerMetadata {
 	prefix: string;
 
 	/**
-	 * controller filename location, 
-	 * use to determine the relative location
-	 * of controller's views
-	 */
-	filename: string;
-
-	/**
 	 * controllers action map,
 	 * use to mount the controllers actions 
 	 * handlers in the router
 	 */
-	actions: Map<string, ActionMetadata>;
+	actions: Map<string, ActionInfo>;
 }
 
 /**
- * gets the controller filename by searching
- * the callstack, and finding the file
- * that has the current process cwd, and 
- * ends with controller.js
- * @returns filename if found, undefined otherwise
+ * controller info options
  */
-export function getControllerFileName(): string | undefined {
-	const CONTROLLER_PATTERN = /[c|C]ontroller\.js$/gm;
-	const filenames: string[] = reflection.getCallsites().map(x => x.getFileName());
-	const filename = filenames.find(x => x.startsWith(process.cwd()) && CONTROLLER_PATTERN.test(x));
-	return filename;
+export interface ControllerOptions {
+	/**
+	 * controller prefix
+	 */
+	prefix?: string;
 }
 
-export function getControllerMetadata(target: Object): ControllerMetadata {
-	const metadata = Reflect.getMetadata(ControllerMetadataKey, target);
-	if(!metadata) {
-		throw new Error(`class=${target} requires @controller() decorator`);
+/**
+ * get a objects controller info, throws if not found
+ * @param object target object
+ * @returns controller info object
+ */
+export function getControllerInfo(object: Object): ControllerInfo {
+	const controllerInfo = tryGetControllerInfo(object);
+	if (!controllerInfo) {
+		throw new Error(`class=${object} requires @controller() or action() decorators`);
 	}
 
-	return metadata;
+	return controllerInfo;
 }
 
-export function defineControllerMetadata(target: Object, options: Partial<ControllerMetadata>): ControllerMetadata {
-	let metadata: ControllerMetadata | undefined = Reflect.getOwnMetadata(ControllerMetadataKey, target);
-	if(metadata) {
-		if(metadata.filename !== options.filename && options.filename) {
-			metadata.filename = options.filename;
-		}
-
-		if(metadata.name !== options.name && options.name) {
-			metadata.name = options.name;
-		}
-
-		if(metadata.prefix !== options.prefix && options.prefix) {
-			metadata.prefix = options.prefix;
-		}
-
-		return metadata;
-	}
-
-	let { name, prefix, filename } = options;
-	if(!name) {
-		name = (target as Function).name;
-
-		if(!name) {
-			throw new Error(`unable to get controller name from target.name`);
-		}
-
-		if(name.endsWith('Controller')) {
-			name = name.substring(0, name.length - 'Controller'.length);
-		}
-	}
-
-	if(!prefix) {
-		prefix = paramCase(pluralize(name));
-	}
-
-	const parentMetadata: ControllerMetadata | undefined = Reflect.getMetadata(ControllerMetadataKey, target);
-	if(parentMetadata) {
-		metadata = {
-			filename: filename!,
-			name, 
-			prefix,
-			actions: new Map<string, ActionMetadata>(parentMetadata.actions)
-		}
-	}
-	else {
-		metadata = {
-			filename: filename!,
-			name, 
-			prefix,
-			actions: new Map<string, ActionMetadata>()
-		}
-
-		const properties = reflection.getClassPropertyList(target);
-		for(const property of properties) {
-			const action = Reflect.getMetadata(ActionMetadataKey, target, property);
-			metadata.actions.set(property, action);
-		}
-	}
-
-	Reflect.defineMetadata(ControllerMetadataKey, metadata, target);
-	return metadata;
+/**
+ * gets controller information, returns undefined if not found
+ * @param constructor class type constructor
+ * @returns controller info or undefined if not found
+ */
+export function tryGetControllerInfo(object: Object): ControllerInfo | undefined {
+	const constructor = getConstructor(object);
+	const controllerInfo = Reflect.getMetadata(ControllerInfoKey, constructor);
+	return controllerInfo;
 }
 
-export function controllerDecorator(options?: Partial<ControllerMetadata>): ClassDecorator {
-	options = options ?? {};
-	if(!options.filename) {
-		const filename = getControllerFileName();
-		if(!filename) {
-			throw new Error(`unable to get controller filename`);
+/**
+ * set controller information
+ * @param object target object
+ * @param options 
+ * @returns 
+ */
+export function setControllerInfo(object: Object, options?: ControllerOptions): ControllerInfo {
+	let controllerInfo: ControllerInfo | undefined = Reflect.getOwnMetadata(ControllerInfoKey, object);
+	if (controllerInfo && options) {
+		if (options.prefix && controllerInfo.prefix !== options.prefix ) {
+			controllerInfo.prefix = options.prefix;
 		}
-
-		options.filename = filename;
 	}
 
-	return function(target: Object) {
-		// target is always constructor
-		defineControllerMetadata(target, options!);
+	if(controllerInfo) {
+		return controllerInfo;
+	}
+
+	const constructor = getConstructor(object);
+	const name = constructor.name;
+	let prefix = options?.prefix;
+
+	/* istanbul ignore else */
+	if (!prefix) {
+		let prefixName = name;
+
+		/* istanbul ignore else */
+		if(prefixName.endsWith('Controller')) {
+			prefixName = prefixName.substring(0, prefixName.length - 'Controller'.length);
+		}
+
+		prefix = paramCase(pluralize(prefixName));
+	}
+
+	controllerInfo = {
+		prefix,
+		name,
+		constructor: constructor as any,
+		actions: new Map<string, ActionInfo>()
+	}
+
+	Reflect.defineMetadata(ControllerInfoKey, controllerInfo, constructor);
+	return controllerInfo;
+}
+
+/**
+ * gets a http method and path from a list of
+ * conventions, that match a property name for a function
+ * to a well known route
+ * @param name property name
+ * @returns http method and path as a tuple, undefined if not matches are found
+ */
+export function getKnownAction(name: string): [HttpMethod | undefined, string | undefined] {
+	switch (name) {
+		/**
+		 * show methods
+		 */
+		case 'show': return ['get', '/:id']
+
+		/**
+		 * index methods
+		 */
+		case 'index': return ['get', '/'];
+
+		/**
+		 * create methods
+		 */
+		case 'create': return ['get', '/create'];
+		case 'doCreate': return ['post', '/create'];
+		case 'createDone': return ['get', '/create/done'];
+
+		/**
+		 * edit methods
+		 */
+		case 'edit': return ['get', '/:id/edit']
+		case 'doEdit': return ['patch', '/:id/edit'];
+		case 'editDone': return ['get', '/edit/done']
+
+		/**
+		 * delete methods
+		 */
+		case 'delete': return ['get', '/:id/delete']
+		case 'doDelete': return ['delete', '/:id/delete'];
+		case 'deleteDone': return ['get', '/delete/done']
+
+		default: return [undefined, undefined];
 	}
 }
 
-export function actionDecorator(method?: HttpMethod, path?: string): PropertyDecorator {
-	const filename = getControllerFileName();
-	if(!filename) {
-		throw new Error(`unable to get controller filename`);
+/**
+ * controller decorator, use to set controller prefix
+ * @param prefix route prefix
+ * @returns class decorator
+ */
+export function controller(prefix?: string): ClassDecorator {
+	return function (target: Object) {
+		const constructor = getConstructor(target);
+		setControllerInfo(constructor, { prefix });
 	}
+}
 
-	return function(target: Object, property: string | Symbol) {
-		// might be class constructor or prototype
-		target = reflection.getConstructor(target);
-
+/**
+ * action decorator, use to mark a function as a controller
+ * action
+ * @param method http method for action
+ * @param path route path, relative to controller's prefix
+ * @returns property decorator
+ */
+export function action(method?: HttpMethod, path?: string): PropertyDecorator {
+	return function (constructor: Object, property: string | Symbol) {
+		// get property name
 		let name: string;
 
-		if(typeof property === 'symbol') {
+		/* istanbul ignore if */
+		if (typeof property === 'symbol') {
 			name = property.description ?? '';
 		}
 		else {
@@ -177,101 +220,27 @@ export function actionDecorator(method?: HttpMethod, path?: string): PropertyDec
 
 		// determine method and path
 		// base on conventions
-		if(!method && !path) {
-			switch(name) {
-				/**
-				 * show methods
-				 */
-				case 'show':
-					method = 'get';
-					path = '/:id'
-					break;
-
-				/**
-				 * index methods
-				 */
-				case 'index': 
-					method = 'get';
-					path = '/';
-					break;
-
-				/**
-				 * create methods
-				 */
-				case 'create': 
-					method = 'get';
-					path = '/create';
-					break;
-
-				case 'doCreate':
-					method = 'post';
-					path = '/create';
-					break;
-
-				case 'createDone':
-					method = 'get';
-					path = '/create/done';
-					break;
-
-				/**
-				 * edit methods
-				 */
-				case 'edit': 
-					method = 'get';
-					path = '/:id/edit';
-					break;
-				
-				case 'doEdit':
-					method = 'patch';
-					path = '/:id/edit';
-					break;
-
-				case 'editDone':
-					method = 'get';
-					path = '/edit/done';
-					break;
-
-				/**
-				 * delete methods
-				 */
-				case 'delete':
-					method = 'get';
-					path = '/:id/delete';
-					break;
-
-				case 'doDelete':
-					method = 'delete';
-					path = '/:id/delete';
-					break;
-
-				case 'deleteDone':
-					method = 'get';
-					path = '/delete/done';
-					break;
-
-				default:
-					method = method ?? 'get';
-					path = name;
-			}
+		if (!method && !path) {
+			[method, path] = getKnownAction(name);
 		}
 
-		if(!method) {
+		if (!method) {
 			method = 'get';
 		}
 
-		if(!path) {
+		if (!path) {
 			path = paramCase(name);
 		}
 
-		const metadata: ActionMetadata = {
+		const actionInfo: ActionInfo = {
 			name,
 			method,
 			path
 		}
-		const controller = defineControllerMetadata(target, { filename });
-		controller.actions.set(name, metadata);
 
-		reflection.addClassProperty(target, name);
-		Reflect.defineMetadata(ActionMetadataKey, metadata, target, name);
+		// might be class constructor or prototype
+		constructor = getConstructor(constructor);
+		const controller = setControllerInfo(constructor);
+		controller.actions.set(name, actionInfo);
 	}
 }

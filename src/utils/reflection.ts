@@ -1,7 +1,7 @@
 /**
- * class type
+ * class constructor function type
  */
-export interface ClassType<T = any> {
+export interface Constructor<T = any> {
     new(...args: any[]): T;
 }
 
@@ -61,43 +61,6 @@ export function getConstructor(target: Object): Function {
 	else {
 		throw new Error(`unable to get constructor from target=${target}`);
 	}
-}
-
-/**
- * get a list of class properties 
- * that have been assigned metadata via the reflection
- * api
- * @param target class type
- * @returns set of class properties
- */
-export function getClassPropertyList(target: Object): Set<string> {
-	// target = constructor | prototype
-	target = getConstructor(target);
-
-	let set: Set<string> | undefined = Reflect.getOwnMetadata(PropertyListKey, target);
-	if(!set) {
-		const parentSet = Reflect.getMetadata(PropertyListKey, target);
-		if(parentSet) {
-			set = new Set(parentSet);
-		}
-		else {
-			set = new Set();
-		}
-
-		Reflect.defineMetadata(PropertyListKey, set, target);
-	}
-
-	return set;
-}
-
-/**
- * add a property to the class property list
- * @param target class type
- * @param property property name
- */
-export function addClassProperty(target: Object, property: string): void {
-	const list = getClassPropertyList(target);
-	list.add(property);
 }
 
 export interface GetCallsiteOptions {

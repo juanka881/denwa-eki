@@ -1,19 +1,16 @@
 import React from 'react';
 import { Request, Response } from 'express';
+import { RouteInfo } from '../controllers/types';
 
 export interface ViewProps<T = any> {
 	request: Request;
 	response: Response;
 	data: T;
+	user?: any;
+	locals: {
+		[key: string]: any
+	},
+	route?: RouteInfo;
 }
 
-export interface AppProps {
-	ViewComponent: React.ComponentType<any>;	
-	viewProps: ViewProps;
-}
-
-export interface LayoutProps {
-	children: React.ReactNode;
-}
-
-export const AppContext = React.createContext<AppProps | undefined>(undefined);
+export const ViewContext = React.createContext<ViewProps | undefined>(undefined);
