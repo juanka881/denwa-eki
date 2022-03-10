@@ -1,6 +1,6 @@
 import { ts, it } from '../test';
 import { mockReq, mockRes } from 'sinon-express-mock';
-import sinon, { SinonStub } from 'sinon';
+import sinon from 'sinon';
 import * as middleware from '../../src/controllers/middleware';
 import * as context from '../../src/controllers/context';
 import { RouteInfo } from '../../src/controllers/types';
