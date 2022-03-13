@@ -9,7 +9,7 @@
     "dev": "tsc -w",
     "pretest": "pnpm run build",
     "test": "pnpm run build && mocha dist/test/**/*.js",
-    "cover": "nyc --reporter=lcov --reporter=text-summary --report-dir=./dist/.coverage --temp-dir=./dist/.nyc pnpm run test",
+    "cover": "nyc --reporter=lcov --reporter=text-summary --report-dir=dist/.coverage --temp-dir=dist/.nyc pnpm run test",
     "coverv": "start ./dist/.coverage/lcov-report/index.html"
   },
   "keywords": [],
