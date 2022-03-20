@@ -1,6 +1,6 @@
 {
   "name": "@denwa/eki",
-  "version": "2.12.0",
+  "version": "2.13.0",
   "description": "express app framework",
   "main": "index.js",
   "scripts": {
@@ -35,7 +35,7 @@
     "sinon": "^13.0.1",
     "sinon-express-mock": "^2.2.1",
     "supertest": "^6.2.2",
-    "typescript": "^4.4.4"
+    "typescript": "4.4.4"
   },
   "dependencies": {
     "@denwa/log": "^1.2.0",

@@ -3,7 +3,7 @@ import React from 'react';
 import { renderToStaticNodeStream } from 'react-dom/server';
 import { Context, getData } from '../context';
 import { RouteInfo } from '../types';
-import { ViewContext, ViewProps } from '../../views';
+import { ViewPropsContext, ViewProps } from '../../views';
 import { Response } from 'express';
 import { ActionResult } from '../types';
 import { RouteInfoKey } from '../middleware';
@@ -97,7 +97,7 @@ export async function renderView(response: Response, result: ViewResult): Promis
 		route: getData(request, RouteInfoKey),
 
 	}
-	const viewElement = React.createElement(ViewContext.Provider, { 
+	const viewElement = React.createElement(ViewPropsContext.Provider, { 
 		value: viewProps, 
 		children: React.createElement(viewComponent, viewProps)
 	});
