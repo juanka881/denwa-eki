@@ -55,14 +55,14 @@ export async function renderView(response: Response, result: ViewResult): Promis
 	const request = response.req;
 	let viewPath: string = '';
 
-	if(result.name.startsWith('res:')) {
-		const resourcesDir = request.app.get('res');
-		if (!resourcesDir) {
-			throw new Error(`unable to get resources dirname path from request.app.get('res')`);
+	if(result.name.startsWith('views:')) {
+		const viewsDir = request.app.get('views');
+		if (!viewsDir) {
+			throw new Error(`unable to get views dirname path from request.app.get('views')`);
 		}
 
-		const name = result.name.substring('res:'.length);
-		viewPath = path.join(resourcesDir, name);
+		const name = result.name.substring('views:'.length);
+		viewPath = path.join(viewsDir, name);
 	}
 	else if(!result.name.startsWith('/') && !result.name.startsWith('./')) {
 		const route: RouteInfo = getData(request, RouteInfoKey);

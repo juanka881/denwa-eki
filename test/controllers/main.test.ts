@@ -15,7 +15,7 @@ class TestController {
 
 	@action()
 	async http404(ctx: Context) {
-		return view('res:404');
+		return view('views:404');
 	}
 
 	@action()
@@ -77,7 +77,7 @@ describe('controllers/main', function() {
 		//log.instance.level = 'debug';
 		const tiny = builder.getContainer();
 		const app = express();
-		app.set('res', path.join(__dirname, 'res'));
+		app.set('views', path.join(__dirname, 'views'));
 		app.use(setRequestContext(tiny));
 		
 		const route = createRouteBuilder(app, log);
@@ -100,7 +100,7 @@ describe('controllers/main', function() {
 		//log.instance.level = 'debug';
 		const tiny = builder.getContainer();
 		const app = express();
-		app.set('res', path.join(__dirname, 'res'));
+		app.set('views', path.join(__dirname, 'views'));
 		app.use(setRequestContext(tiny));
 		
 		const route = createRouteBuilder(app, log);
