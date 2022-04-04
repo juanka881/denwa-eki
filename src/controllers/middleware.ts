@@ -25,6 +25,52 @@ export const ControllerInstanceKey = 'eki:controllerInstance';
 export const ActionResultKey = 'eki:actionResult';
 
 /**
+ * controller route timing key
+ */
+export const RouteTimingInfoKey = 'eki:routeTimingInfo';
+
+/**
+ * controller handle timing  key
+ */
+export const HandleTimingInfoKey = 'eki:handleTimingInfo';
+
+/**
+ * controller render timing key
+ */
+export const RenderTimingInfoKey = 'eki:renderTimingInfo';
+
+/**
+ * timing info object
+ */
+export class TimingInfo {
+	readonly start: Date;
+	readonly startHRT: bigint;
+	endHRT?: bigint;
+
+	constructor() {
+		this.start = new Date();
+		this.startHRT = process.hrtime.bigint();
+	}
+
+	end(): bigint {
+		if(!this.endHRT) {
+			this.endHRT = process.hrtime.bigint();
+		}
+
+		const ns = this.endHRT - this.startHRT;
+		const ms = ns / 1000000n;
+		return ms;
+	}
+
+	diff(): bigint {
+		const end = process.hrtime.bigint();
+		const ns = end - this.startHRT;
+		const ms = ns / 1000000n;
+		return ms;
+	}
+}
+
+/**
  * wraps a handler so it can handle async functions
  * @param handler async function
  * @returns express handler
@@ -52,6 +98,7 @@ export function setRequestContext(tiny?: Tiny): RequestHandler {
 		}
 		const context: Context = new ContextInstance(request, response, next, tiny);
 		setData(request, ContextKey, context);
+		setData(request, RouteTimingInfoKey, new TimingInfo());
 		
 		next();
 	}
@@ -73,6 +120,12 @@ export function setControllerRoute(route: RouteInfo): RequestHandler {
 		route.instance = instance;
 		setData(request, RouteInfoKey, route);
 		setData(request, ControllerInstanceKey, instance);
+		setData(request, HandleTimingInfoKey, new TimingInfo());
+
+		const routeTiming: TimingInfo | undefined = getData(request, RouteTimingInfoKey);
+		if(routeTiming) {
+			routeTiming.end();
+		}
 		
 		next();
 	}
@@ -99,6 +152,12 @@ export async function executeAction(request: Request, response: Response, next: 
 
 		const result = await instance[route.action.name](context);
 		setData(request, ActionResultKey, result);
+
+		const handleTiming: TimingInfo | undefined = getData(request, HandleTimingInfoKey);
+		if(handleTiming) {
+			handleTiming.end();
+		}
+
 		next();
 	}
 	catch(error) {

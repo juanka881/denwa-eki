@@ -1,12 +1,12 @@
 import path from 'path';
 import React from 'react';
 import { renderToStaticNodeStream } from 'react-dom/server';
-import { Context, getData } from '../context';
+import { Context, getData, setData } from '../context';
 import { RouteInfo } from '../types';
 import { ViewPropsContext, ViewProps } from '../../views';
 import { Response } from 'express';
 import { ActionResult } from '../types';
-import { RouteInfoKey } from '../middleware';
+import { RenderTimingInfoKey, RouteInfoKey, TimingInfo } from '../middleware';
 
 /**
  * renders a view as html
@@ -116,5 +116,12 @@ export async function renderView(response: Response, result: ViewResult): Promis
 }
 
 export async function viewHandler(result: ViewResult, context: Context): Promise<any> {
-	await renderView(context.response, result);
+	const timing = new TimingInfo();
+	try {
+		setData(context.request, RenderTimingInfoKey, timing);
+		await renderView(context.response, result);
+	}
+	finally {
+		timing.end();
+	}
 }
